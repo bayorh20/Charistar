@@ -321,7 +321,7 @@ export default function TrackOrder() {
       {/* HEADER */}
       <div className="sticky top-0 z-30 bg-[#050505] px-6 pt-12 pb-5 flex items-center justify-between border-b border-white/5">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/profile')} className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center hover:bg-white/10 active:scale-95 transition-transform border border-white/5">
+          <button onClick={() => navigate('/orders')} className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center hover:bg-white/10 active:scale-95 transition-transform border border-white/5">
             <ArrowLeft size={16} className="text-white" />
           </button>
           <div>
