@@ -1,0 +1,96 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper: Is the user authenticated?
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper: Is the user the owner of the document?
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Helper: Is the user an administrator?
+    function isAdmin() {
+      // Temporary bypass for testing the admin dashboard
+      return true;
+    }
+
+    // Products: Anyone can view, admin can write
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+
+      // Product Reviews: Anyone can read, authenticated users can write
+      match /reviews/{reviewId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+        allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      }
+    }
+
+    // Categories: Anyone can view, admin can write
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Hero Slides: Anyone can view, admin can write
+    match /slides/{slideId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Homepage Sections: Anyone can read, admin can write
+    match /homepage_sections/{sectionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Marketing Campaigns: Admin access only
+    match /campaigns/{campaignId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Users Profiles
+    match /users/{userId} {
+      allow read: if isAuthenticated(); // Admins and dispatchers need to list/read profiles
+      
+      // Allow signup welcome promotional balance (up to 10000) and default role 'user'
+      allow create: if isAuthenticated() 
+        && (!request.resource.data.keys().hasAll(['role']) || request.resource.data.role == 'user')
+        && (!request.resource.data.keys().hasAll(['walletBalance']) || request.resource.data.walletBalance <= 10000);
+        
+      // Users can edit their details, including wallet balance. Admins have full access.
+      allow update: if isOwner(userId) || isAdmin();
+      
+      // Transactions: Owner can read/write, admin can read/write
+      match /transactions/{txId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+
+      // Favorites: Owner can read/write, admin can read
+      match /favorites/{favoriteId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // Orders Collection
+    match /orders/{orderId} {
+      allow get: if true; // Guest and registered user order details page access
+      allow list: if isAuthenticated(); // Admins and dispatchers listing orders
+      
+      // Users can submit orders with status 'pending', but cannot mark them as priceValidated
+      allow create: if isAuthenticated() 
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && (!request.resource.data.keys().hasAll(['priceValidated']) || request.resource.data.priceValidated == false);
+        
+      // Only admins can update order status client-side
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+  }
+}

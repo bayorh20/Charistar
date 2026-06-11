@@ -1,0 +1,805 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════
+   ACCESSIBILITY & EYE-CARE CUSTOM PROPERTIES
+   ═══════════════════════════════════════════════════ */
+:root.font-size-normal {
+  font-size: 16px;
+}
+:root.font-size-large {
+  font-size: 18px;
+}
+:root.font-size-xlarge {
+  font-size: 20px;
+}
+
+/* Force disable animations and transitions when requested */
+:root.animations-disabled *,
+:root.animations-disabled *::before,
+:root.animations-disabled *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* GPU & CPU Performance overrides for low-memory / low-end devices */
+:root.low-performance *,
+:root.low-performance *::before,
+:root.low-performance *::after {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  filter: none !important;
+}
+
+/* Opaque fallbacks for glassmorphism layout components */
+:root.low-performance .glass-panel,
+:root.low-performance .glass-panel-solid,
+:root.low-performance .glass-nav,
+:root.low-performance .glass-panel-card,
+:root.low-performance [class*="glass-"] {
+  background: var(--bg-secondary, #1a1a1e) !important;
+  border: 1px solid var(--border-color, rgba(255,255,255,0.065)) !important;
+}
+
+
+/* ═══════════════════════════════════════════════════
+   THEME CSS CUSTOM PROPERTIES (defaults = dark mode)
+═══════════════════════════════════════════════════ */
+:root {
+  --bg-primary:     #121214;
+  --bg-primary-rgb: 18, 18, 20;
+  --bg-secondary:   #1a1a1e;
+  --bg-secondary-rgb: 26, 26, 30;
+  --bg-card:        rgba(255, 255, 255, 0.045);
+  --bg-nav:         rgba(18, 18, 20, 0.92);
+  --text-primary:   #f3f4f6;
+  --text-secondary: #a1a1aa;
+  --text-muted:     #6b7280;
+  --border-color:   rgba(255, 255, 255, 0.065);
+  --accent:         #A3C644;
+  --accent-text:    #000000;
+  --accent-glow:    transparent;
+  --glass-bg:       rgba(255, 255, 255, 0.045);
+  --glass-blur:     6px;
+  --input-bg:       rgba(255, 255, 255, 0.03);
+  --input-border:   rgba(255, 255, 255, 0.07);
+  --shadow-card:    0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+/* ── LIGHT THEME ─────────────────────────────────── */
+:root.theme-light body { background-color: #F9FAFB !important; color: #111827 !important; }
+:root.theme-light .bg-charistar-dark { background-color: #F9FAFB !important; }
+:root.theme-light .bg-\[\#050505\] { background-color: #F9FAFB !important; }
+:root.theme-light .bg-\[\#0a0a0a\] { background-color: #FFFFFF !important; }
+
+/* Clean, crisp glass panels and nav */
+:root.theme-light .glass-panel,
+:root.theme-light .glass-panel-solid,
+:root.theme-light .glass-nav {
+  background: #FFFFFF !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.03) !important;
+}
+
+/* Elegant Text Contrast */
+:root.theme-light .text-white { color: #111827 !important; }
+:root.theme-light .text-gray-300 { color: #4B5563 !important; }
+:root.theme-light .text-gray-400 { color: #6B7280 !important; }
+:root.theme-light .text-gray-500 { color: #9CA3AF !important; }
+:root.theme-light .text-gray-600 { color: #D1D5DB !important; }
+
+/* Subtle Borders */
+:root.theme-light .border-white\/5,
+:root.theme-light .border-white\/8,
+:root.theme-light .border-white\/10 { border-color: rgba(0,0,0,0.06) !important; }
+:root.theme-light .divide-white\/5 > * + * { border-color: rgba(0,0,0,0.06) !important; }
+
+/* Input Fields & Soft Backgrounds */
+:root.theme-light .bg-white\/5,
+:root.theme-light .bg-white\/10 { background: #F3F4F6 !important; border: 1px solid rgba(0,0,0,0.04) !important; }
+:root.theme-light .bg-black\/25,
+:root.theme-light .bg-black\/40,
+:root.theme-light .bg-black\/60 { background: #FFFFFF !important; border: 1px solid rgba(0,0,0,0.08) !important; }
+
+:root.theme-light input, 
+:root.theme-light textarea { 
+  color: #111827 !important; 
+  background: #FFFFFF !important; 
+  border-color: rgba(0,0,0,0.1) !important; 
+  box-shadow: 0 2px 5px rgba(0,0,0,0.02) inset !important;
+}
+
+/* ✨ The Deep Emerald Green Accent (Fixing Neon Green) ✨ */
+:root.theme-light .text-charistar-green { color: #059669 !important; }
+:root.theme-light .bg-charistar-green { background-color: #059669 !important; color: #FFFFFF !important; }
+:root.theme-light .border-charistar-green,
+:root.theme-light .border-charistar-green\/20,
+:root.theme-light .border-charistar-green\/30 { border-color: rgba(5, 150, 105, 0.4) !important; }
+:root.theme-light .fill-charistar-green { fill: #059669 !important; }
+
+/* Soften all remaining utility shadows globally to look clean on white */
+:root.theme-light [class*="shadow-"] {
+  box-shadow: 0 4px 15px rgba(0,0,0,0.04) !important;
+}
+:root.theme-light [style*="box-shadow"] {
+  box-shadow: 0 4px 15px rgba(0,0,0,0.04) !important;
+}
+/* Deep Emerald Buttons get a slightly stronger, tinted shadow */
+:root.theme-light .bg-charistar-green {
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25) !important;
+}
+:root.theme-light .shadow-neon { box-shadow: none !important; }
+
+/* Gradient Fixes */
+:root.theme-light .from-charistar-green { --tw-gradient-from: #065F46 !important; }
+:root.theme-light .via-emerald-300 { --tw-gradient-via: #059669 !important; }
+:root.theme-light .to-charistar-green { --tw-gradient-to: #10B981 !important; }
+
+
+/* ── GREEN THEME ─────────────────────────────────── */
+:root.theme-green body { background-color: #050f03 !important; color: #e8ffcc !important; }
+:root.theme-green .bg-charistar-dark { background-color: #050f03 !important; }
+:root.theme-green .glass-panel {
+  background: rgba(204,255,0,0.05) !important;
+  border-color: rgba(204,255,0,0.12) !important;
+}
+:root.theme-green .glass-panel-solid {
+  background: var(--bg-secondary) !important;
+  border-color: var(--border-color) !important;
+}
+:root.theme-green .glass-nav {
+  background: rgba(5,15,3,0.95) !important;
+  border-color: rgba(204,255,0,0.09) !important;
+}
+:root.theme-green .text-white { color: #e8ffcc !important; }
+:root.theme-green .text-gray-400 { color: #7db85a !important; }
+:root.theme-green .text-gray-500 { color: #5a8a3a !important; }
+:root.theme-green .text-gray-600 { color: #4a7030 !important; }
+:root.theme-green .border-white\/5,
+:root.theme-green .border-white\/8,
+:root.theme-green .border-white\/10 { border-color: rgba(204,255,0,0.09) !important; }
+:root.theme-green .bg-white\/5 { background: rgba(204,255,0,0.04) !important; }
+:root.theme-green .bg-black\/25,
+:root.theme-green .bg-black\/40 { background: rgba(0,8,0,0.35) !important; }
+:root.theme-green .divide-white\/5 > * + * { border-color: rgba(204,255,0,0.08) !important; }
+:root.theme-green input, :root.theme-green textarea { color: #e8ffcc !important; }
+
+
+/* ── DARK THEME OVERRIDES ────────────────────────── */
+:root.theme-dark body {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
+}
+
+:root.theme-dark .bg-charistar-dark { background-color: var(--bg-primary) !important; }
+:root.theme-dark .bg-\[\#050505\] { background-color: var(--bg-primary) !important; }
+:root.theme-dark .bg-\[\#0a0a0a\] { background-color: var(--bg-primary) !important; }
+:root.theme-dark .bg-\[\#121212\] { background-color: var(--bg-secondary) !important; }
+:root.theme-dark .bg-\[\#1c1c1c\] { background-color: var(--bg-secondary) !important; }
+:root.theme-dark .bg-\[\#111\] { background-color: var(--bg-secondary) !important; }
+:root.theme-dark .bg-\[\#090909\] { background-color: var(--bg-secondary) !important; }
+:root.theme-dark .bg-\[\#0c0c0c\] { background-color: var(--bg-secondary) !important; }
+
+/* Dynamic transparent opacities using RGB channels */
+:root.theme-dark .bg-\[\#050505\]\/40 { background-color: rgba(var(--bg-primary-rgb), 0.4) !important; }
+:root.theme-dark .bg-\[\#050505\]\/60 { background-color: rgba(var(--bg-primary-rgb), 0.6) !important; }
+:root.theme-dark .bg-\[\#050505\]\/70 { background-color: rgba(var(--bg-primary-rgb), 0.7) !important; }
+:root.theme-dark .bg-\[\#050505\]\/80 { background-color: rgba(var(--bg-primary-rgb), 0.8) !important; }
+:root.theme-dark .bg-\[\#050505\]\/90 { background-color: rgba(var(--bg-primary-rgb), 0.9) !important; }
+:root.theme-dark .bg-\[\#050505\]\/95 { background-color: rgba(var(--bg-primary-rgb), 0.95) !important; }
+:root.theme-dark .bg-\[\#0c0c0c\]\/80 { background-color: rgba(var(--bg-secondary-rgb), 0.8) !important; }
+:root.theme-dark .bg-\[\#0c0c0c\]\/85 { background-color: rgba(var(--bg-secondary-rgb), 0.85) !important; }
+:root.theme-dark .bg-\[\#0c0c0c\]\/90 { background-color: rgba(var(--bg-secondary-rgb), 0.9) !important; }
+:root.theme-dark .bg-\[\#1c1c1c\]\/95 { background-color: rgba(var(--bg-secondary-rgb), 0.95) !important; }
+
+:root.theme-dark .glass-panel {
+  background: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--shadow-card) !important;
+  backdrop-filter: blur(var(--glass-blur)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur)) !important;
+}
+
+:root.theme-dark .glass-panel-solid {
+  background: var(--bg-secondary) !important;
+  border-color: var(--border-color) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+:root.theme-dark .glass-nav {
+  background: var(--bg-nav) !important;
+  border-top: 1px solid var(--border-color) !important;
+  box-shadow: var(--shadow-card) !important;
+  backdrop-filter: blur(var(--glass-blur)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur)) !important;
+}
+
+:root.theme-dark .text-white { color: var(--text-primary) !important; }
+:root.theme-dark .text-gray-300 { color: var(--text-secondary) !important; }
+:root.theme-dark .text-gray-400 { color: var(--text-secondary) !important; }
+:root.theme-dark .text-gray-500 { color: var(--text-muted) !important; }
+:root.theme-dark .text-gray-600 { color: var(--text-muted) !important; }
+
+:root.theme-dark .border-white\/5,
+:root.theme-dark .border-white\/8,
+:root.theme-dark .border-white\/10 { border-color: var(--border-color) !important; }
+:root.theme-dark .divide-white\/5 > * + * { border-color: var(--border-color) !important; }
+
+:root.theme-dark .bg-white\/5,
+:root.theme-dark .bg-white\/10 {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+}
+:root.theme-dark .bg-black\/25,
+:root.theme-dark .bg-black\/40,
+:root.theme-dark .bg-black\/60 {
+  background: var(--bg-primary) !important;
+  border: 1px solid var(--border-color) !important;
+}
+
+:root.theme-dark input, 
+:root.theme-dark textarea { 
+  color: var(--text-primary) !important; 
+  background-color: var(--input-bg) !important; 
+  border-color: var(--input-border) !important; 
+}
+
+/* ═══════════════════════════════════════════════════
+   GLOBAL SPACING & PADDING — consistent on all screens
+═══════════════════════════════════════════════════ */
+
+/* All page root containers get consistent safe side padding */
+.page-container {
+  padding-left: max(1.25rem, env(safe-area-inset-left));
+  padding-right: max(1.25rem, env(safe-area-inset-right));
+  padding-bottom: max(7rem, calc(6rem + env(safe-area-inset-bottom)));
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Safe inset top for notched phones */
+.safe-top {
+  padding-top: max(1.25rem, env(safe-area-inset-top));
+}
+
+/* All card/panel elements: ensure minimum internal padding */
+.glass-panel {
+  padding: clamp(0.85rem, 4vw, 1.5rem);
+}
+
+/* Section headers breathe well */
+.section-header {
+  padding: 0 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+/* ─── Responsive tweaks for wider screens (tablet preview, desktop) ─── */
+@media (min-width: 480px) {
+  .page-container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .page-container {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   HARDWARE ACCELERATION & PERFORMANCE
+═══════════════════════════════════════════════════ */
+
+html {
+  /* Bump base: all rem units scale up ~6% → more readable body text */
+  font-size: 17px;
+  /* CSS native smooth scrolling — free butter, zero JS */
+  scroll-behavior: smooth;
+  /* iOS momentum scrolling - butter smooth on Safari */
+  -webkit-overflow-scrolling: touch;
+  /* Prevent layout shifts from scrollbar appearing */
+  scrollbar-gutter: stable;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  min-height: 100dvh;
+  background-color: #050505;
+  color: #ffffff;
+  overscroll-behavior-y: none;
+  /* Comfortable line spacing for readability */
+  line-height: 1.6;
+  /* Subtle letter-spacing for a premium, airy feel */
+  letter-spacing: -0.01em;
+  /* Prevent subpixel rendering artifacts */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeSpeed;
+}
+
+#root {
+  width: 100%;
+  min-height: 100%;
+  /* Promote root to its own GPU compositing layer */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+/* ─── Eliminate ALL tap delays — every interactive element ─── */
+/* touch-action:manipulation disables double-tap zoom → kills 300ms delay */
+/* -webkit-tap-highlight-color removes the blue flash on iOS/Android */
+/* user-select:none prevents accidental text highlight on rapid taps */
+button, a, [role="button"], input, select, textarea, label {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: pointer;
+}
+
+/* ─── Instant visual press feedback (pure CSS, no JS needed) ─── */
+/* Fires as soon as finger touches screen, before any JS event */
+button:active,
+a:active,
+[role="button"]:active,
+[class*="active:"]:active,
+[class*="active-scale"]:active {
+  opacity: 0.75;
+  transform: scale(0.96) !important;
+  transition: none !important; /* Zero delay — instant press */
+  animation-duration: 0s !important;
+}
+
+button,
+a,
+[role="button"],
+[class*="active:"] {
+  transition: transform 80ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 80ms ease-out;
+}
+
+.tap-target {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: pointer;
+}
+.tap-target:active {
+  opacity: 0.82;
+  transform: scale(0.97) !important;
+  transition: none !important;
+}
+
+/* ─── Images: GPU-decoded, no layout thrash ─── */
+img {
+  /* Decode off main thread — zero jank when images load */
+  image-rendering: auto;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* ═══════════════════════════════════════════════════
+   GLASSMORPHISM — Performance-tuned
+   Blur reduced: 24px→6px, 32px→10px
+   Saves ~4× GPU texture bandwidth during scroll
+═══════════════════════════════════════════════════ */
+
+.glass-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  contain: layout style;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+.glass-panel-solid {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  contain: layout style;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+.glass-nav {
+  background: var(--bg-nav);
+  border-top: 1px solid var(--border-color);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+}
+
+/* ═══════════════════════════════════════════════════
+   SCROLLBAR
+═══════════════════════════════════════════════════ */
+
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.07);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.14);
+}
+
+/* ═══════════════════════════════════════════════════
+   BUTTERY SMOOTH SCROLLING
+   All overflow containers get iOS momentum physics
+═══════════════════════════════════════════════════ */
+
+/* Every scrollable container gets momentum physics */
+* {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Main scroll container — GPU promoted for zero-jank scrolling */
+body, #root {
+  scroll-behavior: smooth;
+  overflow-anchor: none; /* Prevent browser auto-scroll during dynamic inserts */
+}
+
+/* Horizontal scroll strips (parfait row, category pills) */
+.overflow-x-auto {
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scroll-padding-left: 1rem;
+}
+
+/* Snap individual cards in horizontal strips to feel native */
+.overflow-x-auto > * {
+  scroll-snap-align: start;
+}
+
+/* Vertical page scroll wrapper — decoupled from main thread */
+.under-sheet-content {
+  scroll-behavior: smooth;
+}
+
+/* ═══════════════════════════════════════════════════
+   ANIMATIONS — GPU-only properties (transform/opacity)
+   Never animate: width, height, top, left, margin, padding
+   (those trigger layout → most expensive path)
+═══════════════════════════════════════════════════ */
+
+@keyframes scaleUp {
+  0%   { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1);   opacity: 1; }
+}
+.animate-scaleUp {
+  animation: scaleUp 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@keyframes shimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+.animate-shimmer {
+  animation: shimmer 4s linear infinite;
+  will-change: background-position;
+}
+
+/* No-scrollbar utility */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ═══════════════════════════════════════════════════
+   3D CARD-STACKING SHEET PRESENTATION (iOS style)
+   Highly optimized, GPU accelerated transitions
+   ═══════════════════════════════════════════════════ */
+
+/* Perspective container for the entire screen */
+.perspective-container {
+  perspective: 1200px;
+  perspective-origin: center top;
+  transform-style: preserve-3d;
+  /* Do NOT set overflow:hidden here — it breaks fixed/absolute children */
+}
+
+/* Page content under the sheet — flat static background, no transforms */
+.under-sheet-content {
+  will-change: transform;
+  transition: transform 150ms cubic-bezier(0.16, 1, 0.3, 1) !important;
+  transform-origin: center top;
+}
+
+.under-sheet-content.sheet-open {
+  pointer-events: none;
+  /* 3D sheet-open transform removed — caused blurred/empty screen glitch */
+}
+
+/* Full-screen overlay portal for sheet + backdrop */
+.sheet-portal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.sheet-portal.active {
+  pointer-events: auto;
+}
+
+/* Frosted glass backdrop overlay */
+.sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sheet-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Bottom Sheet - Instant presentation */
+.bottom-sheet-3d {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+  max-height: 85vh;
+  background: rgba(18, 18, 18, 0.97);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 32px 32px 0 0;
+  z-index: 10;
+  opacity: 0;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+}
+
+.bottom-sheet-3d.active {
+  opacity: 1;
+}
+
+/* Loader spinner keyframes (used by App.jsx inline-style Loader) */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* PullToRefresh spinner */
+@keyframes ptr-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ═══════════════════════════════════════════════════
+   3D MOTION ADD-TO-CART FLYING PORTAL & BOUNCE
+   ═══════════════════════════════════════════════════ */
+
+@keyframes flyToCart {
+  0% {
+    transform: translate3d(0, 0, 0px) rotateX(45deg) rotateY(45deg) rotateZ(0deg) scale(0.4);
+    opacity: 0.15;
+    filter: drop-shadow(0 4px 15px rgba(204, 255, 0, 0.15)) blur(2px);
+  }
+  25% {
+    transform: translate3d(calc(var(--mid-x) * 0.4), calc(var(--mid-y) * 0.4), 400px) rotateX(-20deg) rotateY(15deg) rotateZ(180deg) scale(1.8);
+    opacity: 1;
+    filter: drop-shadow(0 30px 65px rgba(204, 255, 0, 0.95)) blur(0px);
+  }
+  55% {
+    transform: translate3d(var(--mid-x), var(--mid-y), 650px) rotateX(10deg) rotateY(-35deg) rotateZ(360deg) scale(2.2);
+    opacity: 1;
+    filter: drop-shadow(0 45px 95px rgba(204, 255, 0, 1)) blur(0px);
+  }
+  80% {
+    transform: translate3d(calc(var(--end-x) * 0.85), calc(var(--end-y) * 0.85), 250px) rotateX(45deg) rotateY(25deg) rotateZ(540deg) scale(1.3);
+    opacity: 0.95;
+    filter: drop-shadow(0 15px 35px rgba(204, 255, 0, 0.6)) blur(1px);
+  }
+  100% {
+    transform: translate3d(var(--end-x), var(--end-y), -150px) rotateX(90deg) rotateY(90deg) rotateZ(720deg) scale(0.05);
+    opacity: 0;
+    filter: drop-shadow(0 0 5px rgba(204, 255, 0, 0)) blur(4px);
+  }
+}
+
+.flying-cart-item {
+  position: absolute;
+  pointer-events: none;
+  animation: flyToCart 1.5s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+  will-change: transform, opacity;
+  transform-style: preserve-3d;
+}
+
+@keyframes cartBounce {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.32) rotate(-8deg); }
+  65%  { transform: scale(0.92) rotate(4deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+.cart-bump-animation {
+  animation: cartBounce 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
+}
+
+/* Custom premium scrollbar for sidebar menu tabs (Desktop Only) */
+@media (min-width: 768px) {
+  .no-scrollbar::-webkit-scrollbar {
+    width: 4px !important;
+    height: 4px !important;
+    display: block !important;
+  }
+
+  .no-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.02) !important;
+    border-radius: 10px !important;
+  }
+
+  .no-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(163, 198, 68, 0.25) !important; /* Matcha green semi-transparent */
+    border-radius: 10px !important;
+  }
+
+  .no-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(163, 198, 68, 0.6) !important; /* Brighter on hover */
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: auto !important;  /* IE and Edge */
+    scrollbar-width: thin !important;     /* Firefox */
+    scrollbar-color: rgba(163, 198, 68, 0.25) rgba(255, 255, 255, 0.02) !important;
+  }
+}
+
+/* Hide scrollbar entirely on Mobile/Tablet (uses native touch swiping) */
+@media (max-width: 767px) {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   PREMIUM NEON-GLOW BUTTON OVERRIDES (WELL PADDED & ELEGANT)
+   ═══════════════════════════════════════════════════ */
+
+/* Override primary green buttons in Dark & Green themes (except small icon action buttons) */
+:root.theme-dark button.bg-charistar-green:not(.w-8):not(.w-9):not(.w-10):not(.w-11):not(.h-8):not(.h-9):not(.h-10):not(.h-11),
+:root.theme-dark a.bg-charistar-green:not(.w-8):not(.w-9):not(.w-10):not(.w-11):not(.h-8):not(.h-9):not(.h-10):not(.h-11),
+:root.theme-green button.bg-charistar-green:not(.w-8):not(.w-9):not(.w-10):not(.w-11):not(.h-8):not(.h-9):not(.h-10):not(.h-11),
+:root.theme-green a.bg-charistar-green:not(.w-8):not(.w-9):not(.w-10):not(.w-11):not(.h-8):not(.h-9):not(.h-10):not(.h-11) {
+  background-color: #A3C644 !important;
+  color: #050505 !important;
+  border: none !important;
+  border-radius: 1rem !important;
+  padding: 0.9rem 1.8rem !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  font-size: 0.75rem !important;
+  box-shadow: 0 4px 12px rgba(163, 198, 68, 0.2) !important;
+  transition: all 0.2s ease !important;
+}
+
+:root.theme-dark button.bg-charistar-green:not(.w-8):not(.w-9):not(.w-10):not(.w-11):not(.h-8):not(.h-9):not(.h-10):not(.h-11):hover:not(:disabled),
+:root.theme-dark a.bg-charistar-green:not(.w-8):not(.w-9):not(.w-10):not(.w-11):not(.h-8):not(.h-9):not(.h-10):not(.h-11):hover:not(:disabled),
+:root.theme-green button.bg-charistar-green:not(.w-8):not(.w-9):not(.w-10):not(.w-11):not(.h-8):not(.h-9):not(.h-10):not(.h-11):hover:not(:disabled),
+:root.theme-green a.bg-charistar-green:not(.w-8):not(.w-9):not(.w-10):not(.w-11):not(.h-8):not(.h-9):not(.h-10):not(.h-11):hover:not(:disabled) {
+  background-color: #b2d454 !important;
+  box-shadow: 0 6px 16px rgba(163, 198, 68, 0.35) !important;
+}
+
+/* Light Theme Button Override: Deep Emerald styling */
+:root.theme-light button.bg-charistar-green:not(.w-8):not(.w-9):not(.w-10):not(.w-11):not(.h-8):not(.h-9):not(.h-10):not(.h-11),
+:root.theme-light a.bg-charistar-green:not(.w-8):not(.w-9):not(.w-10):not(.w-11):not(.h-8):not(.h-9):not(.h-10):not(.h-11) {
+  background-color: #059669 !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 1rem !important;
+  padding: 0.9rem 1.8rem !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  font-size: 0.75rem !important;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2) !important;
+  transition: all 0.2s ease !important;
+}
+
+:root.theme-light button.bg-charistar-green:not(.w-8):not(.w-9):not(.w-10):not(.w-11):not(.h-8):not(.h-9):not(.h-10):not(.h-11):hover:not(:disabled),
+:root.theme-light a.bg-charistar-green:not(.w-8):not(.w-9):not(.w-10):not(.w-11):not(.h-8):not(.h-9):not(.h-10):not(.h-11):hover:not(:disabled) {
+  background-color: #047857 !important;
+  box-shadow: 0 6px 16px rgba(5, 150, 105, 0.35) !important;
+}
+
+/* ═══════════════════════════════════════════════════
+   PREMIUM NEON GLASS INPUTS
+   ═══════════════════════════════════════════════════ */
+
+.charistar-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  padding: 0.6rem 1.25rem;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.charistar-input-group:focus-within {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(163, 198, 68, 0.6); /* Charistar Green */
+  box-shadow: 0 0 0 1px rgba(163, 198, 68, 0.6);
+}
+
+/* Light Theme overrides for the input group */
+:root.theme-light .charistar-input-group {
+  background: #F3F4F6;
+  border-color: rgba(0,0,0,0.06);
+}
+:root.theme-light .charistar-input-group:focus-within {
+  background: #FFFFFF;
+  border-color: #059669;
+  box-shadow: 0 0 0 1px #059669;
+}
+
+.charistar-input-group input,
+.charistar-input-group textarea {
+  width: 100%;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 0.25rem 0;
+  box-shadow: none !important; /* overrides any global shadows on inputs */
+}
+
+.charistar-input-group textarea {
+  resize: none;
+}
+
+.charistar-input-group input::placeholder,
+.charistar-input-group textarea::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+  font-weight: 600;
+}
+:root.theme-light .charistar-input-group input::placeholder,
+:root.theme-light .charistar-input-group textarea::placeholder {
+  color: rgba(0, 0, 0, 0.3);
+}
+
+/* Group icon state */
+.charistar-input-group svg {
+  color: var(--text-muted);
+  transition: color 0.2s ease;
+  flex-shrink: 0;
+}
+.charistar-input-group:focus-within svg {
+  color: #A3C644;
+}
+:root.theme-light .charistar-input-group:focus-within svg {
+  color: #059669;
+}
+
+
