@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -20,6 +20,7 @@ export default function TrackOrder() {
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(true);
   const [isDialerOpen, setIsDialerOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const messagesEndRef = useRef(null);
   
   // Chat State
   const [chatMessages, setChatMessages] = useState([
@@ -198,6 +199,20 @@ export default function TrackOrder() {
       window.visualViewport.removeEventListener('scroll', handleResize);
     };
   }, []);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [chatMessages, isRiderTyping]);
+
+  useEffect(() => {
+    if (isChatOpen) {
+      setTimeout(scrollToBottom, 100);
+    }
+  }, [isChatOpen]);
 
   const getFormattedTime = () => {
     const d = new Date();
@@ -929,6 +944,7 @@ export default function TrackOrder() {
                     </div>
                   </div>
                 )}
+                <div ref={messagesEndRef} />
               </div>
  
               {/* Rapid Suggestions */}
