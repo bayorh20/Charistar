@@ -511,7 +511,7 @@ export default function LandingPage() {
               className="w-full bg-white/5 border border-white/10 rounded-2xl pl-11 pr-4 py-3.5 text-[13px] font-semibold text-white placeholder-gray-500 outline-none focus:border-charistar-green focus:bg-white/[0.08] transition-all"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
-                  navigate(`/search?q=${encodeURIComponent(e.target.value)}`);
+                  navigate(`/shop?q=${encodeURIComponent(e.target.value)}`);
                 }
               }}
             />
