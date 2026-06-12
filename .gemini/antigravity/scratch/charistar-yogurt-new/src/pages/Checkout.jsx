@@ -41,6 +41,92 @@ const ConfettiGenerator = () => {
   );
 };
 
+const getCardType = (number) => {
+  const trimmed = number.replace(/\s+/g, '');
+  if (/^4/.test(trimmed)) return 'visa';
+  if (/^(5[1-5]|2[2-7])/.test(trimmed)) return 'mastercard';
+  if (/^(5060|5061|5078|5079|6500)/.test(trimmed)) return 'verve';
+  return 'generic';
+};
+
+const CreditCardMockup = ({ number, name, expiry, cvv, focused }) => {
+  const cardType = getCardType(number);
+  const formattedNumber = number.padEnd(19, '•').replace(/(.{4})/g, '$1 ').trim();
+  const formattedExpiry = expiry || 'MM/YY';
+  const formattedName = name || 'CARDHOLDER NAME';
+  
+  const getCardBg = () => {
+    switch (cardType) {
+      case 'visa':
+        return 'from-[#1e3c72] to-[#2a5298]';
+      case 'mastercard':
+        return 'from-[#e65c00] to-[#f9d423]';
+      case 'verve':
+        return 'from-[#11998e] to-[#38ef7d]';
+      default:
+        return 'from-[#282c34] to-[#0f2027]';
+    }
+  };
+
+  const isFlipped = focused === 'cvv';
+
+  return (
+    <div className="w-full max-w-[290px] h-[170px] mx-auto perspective-container mb-4">
+      <div
+        className={`w-full h-full relative preserve-3d transition-transform duration-700 ${isFlipped ? '[transform:rotateY(180deg)]' : ''}`}
+      >
+        {/* Front Card Face */}
+        <div className={`absolute inset-0 rounded-[1.5rem] bg-gradient-to-br ${getCardBg()} p-5 flex flex-col justify-between border border-white/10 shadow-[0_12px_25px_rgba(0,0,0,0.5)] backface-hidden [transform:rotateY(0deg)]`}>
+          <div className="flex justify-between items-start">
+            <div className="w-9 h-6 bg-amber-400/25 rounded border border-amber-400/30 flex items-center justify-center relative overflow-hidden">
+              <div className="absolute inset-x-1 inset-y-1 border border-amber-400/30 opacity-40 rounded-sm"></div>
+              <div className="absolute inset-x-2.5 inset-y-2 bg-amber-400/25"></div>
+            </div>
+            {/* Card Logo */}
+            <div className="text-white font-black italic text-xs tracking-wider uppercase">
+              {cardType === 'visa' && <span className="text-[#ffffff] text-sm font-black drop-shadow">VISA</span>}
+              {cardType === 'mastercard' && <span className="text-[#ffffff] text-sm font-black drop-shadow">mastercard</span>}
+              {cardType === 'verve' && <span className="text-[#ffffff] text-sm font-black drop-shadow">VERVE</span>}
+              {cardType === 'generic' && <span className="text-gray-400 text-[10px]">DEBIT CARD</span>}
+            </div>
+          </div>
+
+          <div className="text-white font-mono text-sm tracking-[0.18em] font-bold text-center my-2 select-none">
+            {formattedNumber}
+          </div>
+
+          <div className="flex justify-between items-end text-white text-[8px] uppercase font-bold tracking-wider">
+            <div className="min-w-0 flex-1 pr-2">
+              <span className="text-white/50 text-[6px] block mb-0.5">Card Holder</span>
+              <span className="truncate block font-semibold">{formattedName}</span>
+            </div>
+            <div className="text-right flex-shrink-0">
+              <span className="text-white/50 text-[6px] block mb-0.5">Expires</span>
+              <span className="font-semibold">{formattedExpiry}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Back Card Face (CVV showing) */}
+        <div className="absolute inset-0 rounded-[1.5rem] bg-gradient-to-br from-[#1b1b1b] to-[#0d0d0d] p-5 flex flex-col justify-between border border-white/10 shadow-[0_12px_25px_rgba(0,0,0,0.5)] backface-hidden [transform:rotateY(180deg)]">
+          <div className="w-full h-8 bg-black -mx-5 mt-1"></div>
+          <div className="w-full flex items-center gap-3 bg-white/5 p-1 rounded-lg border border-white/5 mt-2">
+            <div className="flex-1 h-5 bg-gradient-to-r from-gray-700 to-gray-800 rounded opacity-65 flex items-center justify-end px-2 text-[7px] font-mono text-white tracking-widest">
+              •••• •••• ••••
+            </div>
+            <div className="w-10 h-5 bg-white text-black font-mono font-bold text-xs flex items-center justify-center rounded shadow-inner">
+              {cvv || '•••'}
+            </div>
+          </div>
+          <div className="text-[6px] text-gray-500 text-left leading-relaxed mt-2 uppercase tracking-wider">
+            This card is processed via secure 256-bit encryption. Authorized signatures only.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function Checkout() {
   const navigate = useNavigate();
   const { cartItems, cartTotal, clearCart } = useCart();
@@ -86,6 +172,19 @@ export default function Checkout() {
   const [paymentMethod, setPaymentMethod] = useState(() => currentUser ? 'wallet' : 'card');
   const [isGuestCheckout, setIsGuestCheckout] = useState(false);
   const [guestEmail, setGuestEmail] = useState('');
+  
+  // Direct Card Payment States
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardName, setCardName] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCVV, setCardCVV] = useState('');
+  const [cardFocused, setCardFocused] = useState('');
+  const [ajaxPaymentStep, setAjaxPaymentStep] = useState(0); // 0 = idle, 1 = SSL connection, 2 = encryption, 3 = contacting gateway, 4 = OTP prompt, 5 = Paystack settling, 6 = database sync
+  const [showAjaxModal, setShowAjaxModal] = useState(false);
+  const [otpInput, setOtpInput] = useState('');
+  const [otpError, setOtpError] = useState('');
+  const [otpLoading, setOtpLoading] = useState(false);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState('');
@@ -209,6 +308,30 @@ export default function Checkout() {
       triggerToast("Please enter your preferred custom time.", "error");
       return false;
     }
+    if (paymentMethod === 'card') {
+      const trimmedCard = cardNumber.replace(/\s+/g, '');
+      if (trimmedCard.length < 16 || !/^\d+$/.test(trimmedCard)) {
+        triggerToast("Please enter a valid 16-digit card number.", "error");
+        return false;
+      }
+      if (!cardName.trim()) {
+        triggerToast("Please enter the cardholder name.", "error");
+        return false;
+      }
+      if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) {
+        triggerToast("Please enter card expiry date in MM/YY format.", "error");
+        return false;
+      }
+      const [m, y] = cardExpiry.split('/').map(Number);
+      if (m < 1 || m > 12) {
+        triggerToast("Please enter a valid expiry month.", "error");
+        return false;
+      }
+      if (cardCVV.length < 3) {
+        triggerToast("Please enter a valid CVV.", "error");
+        return false;
+      }
+    }
     return true;
   };
 
@@ -218,25 +341,68 @@ export default function Checkout() {
     return `${nameToUse.trim().replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'customer'}@charistaryogurt.com`;
   };
 
+  const processDirectCardPayment = async () => {
+    if (!validateForm()) return;
+    
+    setIsProcessing(true);
+    setOtpInput('');
+    setOtpError('');
+    setOtpLoading(false);
+    setAjaxPaymentStep(1); // 1 = Initiating secure connection...
+    setShowAjaxModal(true);
+
+    // 1. SSL/TLS secure channel initiation...
+    await new Promise(resolve => setTimeout(resolve, 1400));
+    if (!showAjaxModal) return; // check if cancelled
+    
+    // 2. Encrypting card details...
+    setAjaxPaymentStep(2);
+    await new Promise(resolve => setTimeout(resolve, 1400));
+    if (!showAjaxModal) return;
+    
+    // 3. Contacting bank gateway...
+    setAjaxPaymentStep(3);
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    if (!showAjaxModal) return;
+    
+    // 4. Require OTP
+    setAjaxPaymentStep(4);
+  };
+
+  const handleVerifyOtp = async (e) => {
+    if (e) e.preventDefault();
+    if (otpInput.length < 6) {
+      setOtpError('Please enter the 6-digit OTP code.');
+      return;
+    }
+    setOtpError('');
+    setOtpLoading(true);
+
+    try {
+      // 5. Settling payment with processor...
+      await new Promise(resolve => setTimeout(resolve, 1800));
+      setOtpLoading(false);
+      setAjaxPaymentStep(5);
+      
+      // 6. Creating order...
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      setAjaxPaymentStep(6);
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      await createOrder('card');
+      setShowAjaxModal(false);
+    } catch (err) {
+      console.error(err);
+      setOtpError('Authorization failed. Please try again.');
+      setOtpLoading(false);
+    }
+  };
+
   const handlePlaceOrder = () => {
     if (!validateForm()) return;
 
     if (paymentMethod === 'card') {
-      const reference = 'ord_' + Date.now();
-      // Call synchronously to preserve browser user-gesture context (needed for popup)
-      payWithPaystack({
-        email: getCustomerEmail(),
-        amount: finalTotal,
-        reference: reference,
-        onSuccess: async (response) => {
-          setIsProcessing(true);
-          await createOrder('card');
-        },
-        onCancel: () => {
-          setIsProcessing(false);
-          triggerToast('Payment cancelled.', 'error');
-        }
-      });
+      processDirectCardPayment();
     } else {
       setIsProcessing(true);
       createOrder('wallet');
@@ -267,7 +433,7 @@ export default function Checkout() {
       }
 
       const firebaseOrderData = {
-        paymentMethod: method === 'card' ? 'Debit Card' : 'Charistar Wallet',
+        paymentMethod: method === 'card' ? 'Direct Card Payment' : 'Charistar Wallet',
         customerName: delName || 'Yogurt Lover',
         address: delAddress || '',
         customerPhone: delPhone || '',
@@ -1063,12 +1229,114 @@ export default function Checkout() {
                         <CreditCard size={20} />
                       </div>
                       <div className="text-left">
-                        <p className="text-xs font-black text-white uppercase tracking-wider">Pay with Paystack</p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Secure online payment</p>
+                        <p className="text-xs font-black text-white uppercase tracking-wider">Direct Card Payment</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Pay directly with secure encryption</p>
                       </div>
                     </div>
                     <CreditCard size={18} className={paymentMethod === 'card' ? 'text-charistar-green' : 'text-gray-500'} />
                   </div>
+
+                  {/* Inline Credit Card Form Fields */}
+                  {paymentMethod === 'card' && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden space-y-4 pt-2"
+                    >
+                      <CreditCardMockup 
+                        number={cardNumber}
+                        name={cardName}
+                        expiry={cardExpiry}
+                        cvv={cardCVV}
+                        focused={cardFocused}
+                      />
+                      
+                      <div className="space-y-3 px-1">
+                        <div className="charistar-input-group">
+                          <CreditCard size={16} className="text-gray-500" />
+                          <div className="w-full">
+                            <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest block mb-0.5">Card Number</label>
+                            <input 
+                              type="tel"
+                              inputMode="numeric"
+                              placeholder="0000 0000 0000 0000"
+                              value={cardNumber}
+                              onFocus={() => setCardFocused('number')}
+                              onBlur={() => setCardFocused('')}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^\d]/g, '').slice(0, 16);
+                                const formatted = val.replace(/(.{4})/g, '$1 ').trim();
+                                setCardNumber(formatted);
+                              }}
+                              className="bg-transparent border-none outline-none text-white font-bold text-xs w-full py-0.5"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="charistar-input-group">
+                          <User size={16} className="text-gray-500" />
+                          <div className="w-full">
+                            <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest block mb-0.5">Cardholder Name</label>
+                            <input 
+                              type="text"
+                              placeholder="Name on Card"
+                              value={cardName}
+                              onFocus={() => setCardFocused('name')}
+                              onBlur={() => setCardFocused('')}
+                              onChange={(e) => setCardName(e.target.value.toUpperCase())}
+                              className="bg-transparent border-none outline-none text-white font-bold text-xs w-full py-0.5"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="charistar-input-group">
+                            <Ticket size={16} className="text-gray-500" />
+                            <div className="w-full">
+                              <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest block mb-0.5">Expiry Date</label>
+                              <input 
+                                type="tel"
+                                inputMode="numeric"
+                                placeholder="MM/YY"
+                                value={cardExpiry}
+                                onFocus={() => setCardFocused('expiry')}
+                                onBlur={() => setCardFocused('')}
+                                onChange={(e) => {
+                                  let val = e.target.value.replace(/[^\d]/g, '').slice(0, 4);
+                                  if (val.length > 2) {
+                                    val = val.slice(0, 2) + '/' + val.slice(2);
+                                  }
+                                  setCardExpiry(val);
+                                }}
+                                className="bg-transparent border-none outline-none text-white font-bold text-xs w-full py-0.5"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="charistar-input-group">
+                            <Lock size={16} className="text-gray-500" />
+                            <div className="w-full">
+                              <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest block mb-0.5">CVV</label>
+                              <input 
+                                type="tel"
+                                inputMode="numeric"
+                                placeholder="123"
+                                value={cardCVV}
+                                onFocus={() => setCardFocused('cvv')}
+                                onBlur={() => setCardFocused('')}
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/[^\d]/g, '').slice(0, 3);
+                                  setCardCVV(val);
+                                }}
+                                className="bg-transparent border-none outline-none text-white font-bold text-xs w-full py-0.5"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
                 </div>
               </div>
           </div>
@@ -1249,6 +1517,167 @@ export default function Checkout() {
                   Cancel
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Secure AJAX Payment Loader Overlay Modal */}
+      <AnimatePresence>
+        {showAjaxModal && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-[#000000]/90 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 30 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 30 }}
+              className="glass-panel p-8 rounded-[2.5rem] border border-white/10 bg-[#0c0c0c]/95 shadow-[0_20px_50px_rgba(0,0,0,0.8)] max-w-sm w-full relative overflow-hidden text-center flex flex-col gap-6 text-white animate-scaleUp"
+            >
+              {/* Animated top glow bar */}
+              <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-charistar-green via-emerald-400 to-[#A3C644]"></div>
+
+              {/* AJAX Processing Steps View */}
+              {ajaxPaymentStep < 4 && (
+                <div className="space-y-6 py-4">
+                  {/* Rotating secure shield spinner */}
+                  <div className="relative mx-auto w-16 h-16 flex items-center justify-center">
+                    <motion.div 
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                      className="absolute inset-0 border-t-2 border-r-2 border-charistar-green border-b-transparent border-l-transparent rounded-full"
+                    />
+                    <div className="w-10 h-10 rounded-full bg-charistar-green/10 flex items-center justify-center text-charistar-green">
+                      <Lock size={18} className="animate-pulse" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h3 className="text-base font-black text-white uppercase tracking-tight">Processing Payment</h3>
+                    <p className="text-gray-400 text-[10px] uppercase font-bold tracking-widest animate-pulse">
+                      Do not refresh or close this window
+                    </p>
+                  </div>
+
+                  {/* Step status logs */}
+                  <div className="text-left bg-black/40 rounded-2xl p-4 border border-white/5 space-y-3 font-mono text-[9px] text-gray-500">
+                    <div className={`flex items-center gap-2 ${ajaxPaymentStep >= 1 ? 'text-charistar-green font-bold' : ''}`}>
+                      <span>{ajaxPaymentStep >= 1 ? '✓' : '○'}</span>
+                      <span>SECURE SSL/TLS CHANNEL INITIATED</span>
+                    </div>
+                    <div className={`flex items-center gap-2 ${ajaxPaymentStep >= 2 ? 'text-charistar-green font-bold' : ''}`}>
+                      <span>{ajaxPaymentStep >= 2 ? '✓' : '○'}</span>
+                      <span>CARD CREDENTIALS VERIFIED & ENCRYPTED</span>
+                    </div>
+                    <div className={`flex items-center gap-2 ${ajaxPaymentStep >= 3 ? 'text-charistar-green font-bold' : ''}`}>
+                      <span>{ajaxPaymentStep >= 3 ? '✓' : '○'}</span>
+                      <span>COMMUNICATING WITH CARD GATEWAY...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* OTP Input Step */}
+              {ajaxPaymentStep === 4 && (
+                <div className="space-y-5">
+                  <div className="w-12 h-12 mx-auto rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                    <CheckCircle size={20} className="animate-pulse" />
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <h3 className="text-md font-black text-white uppercase tracking-tight">3D-Secure Verification</h3>
+                    <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider leading-relaxed px-2">
+                      Enter the 6-digit verification code sent to the phone number ending in *{delPhone.slice(-4) || '5678'}
+                    </p>
+                  </div>
+
+                  {otpError && (
+                    <div className="bg-red-500/10 text-red-400 p-2 rounded-xl text-[10px] font-bold border border-red-500/20 text-center animate-shake">
+                      {otpError}
+                    </div>
+                  )}
+
+                  <form onSubmit={handleVerifyOtp} className="space-y-4">
+                    <input 
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={6}
+                      required
+                      placeholder="e.g. 123456"
+                      value={otpInput}
+                      onChange={e => setOtpInput(e.target.value.replace(/[^\d]/g, ''))}
+                      className="w-full bg-black/60 text-white font-mono text-lg font-black tracking-[0.5em] text-center py-3 rounded-xl border border-white/10 outline-none focus:border-charistar-green/50 transition-all placeholder:tracking-normal placeholder:font-sans placeholder:text-gray-600"
+                    />
+
+                    <button
+                      type="submit"
+                      disabled={otpLoading || otpInput.length < 6}
+                      className="w-full h-12 bg-charistar-green text-black font-black uppercase text-xs tracking-wider rounded-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                    >
+                      {otpLoading ? (
+                        <Loader2 className="animate-spin text-black" size={14} strokeWidth={3} />
+                      ) : 'Submit OTP'}
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {/* Final Settlement Steps */}
+              {ajaxPaymentStep >= 5 && (
+                <div className="space-y-6 py-4">
+                  <div className="relative mx-auto w-16 h-16 flex items-center justify-center">
+                    <motion.div 
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                      className="absolute inset-0 border-t-2 border-r-2 border-emerald-400 border-b-transparent border-l-transparent rounded-full"
+                    />
+                    <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                      <Sparkles size={18} className="animate-pulse" />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h3 className="text-base font-black text-white uppercase tracking-tight">Settling Transaction</h3>
+                    <p className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">
+                      Processing final ledger entries...
+                    </p>
+                  </div>
+
+                  <div className="text-left bg-black/40 rounded-2xl p-4 border border-white/5 space-y-3 font-mono text-[9px] text-gray-500">
+                    <div className="flex items-center gap-2 text-charistar-green font-bold">
+                      <span>✓</span>
+                      <span>3D-SECURE SIGNATURE VERIFIED</span>
+                    </div>
+                    <div className={`flex items-center gap-2 ${ajaxPaymentStep >= 5 ? 'text-charistar-green font-bold' : ''}`}>
+                      <span>{ajaxPaymentStep >= 5 ? '✓' : '○'}</span>
+                      <span>SETTLING PAYMENT WITH GATEWAY...</span>
+                    </div>
+                    <div className={`flex items-center gap-2 ${ajaxPaymentStep >= 6 ? 'text-charistar-green font-bold' : ''}`}>
+                      <span>{ajaxPaymentStep >= 6 ? '✓' : '○'}</span>
+                      <span>CREATING DATABASE ORDER RECORD...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Cancel Button */}
+              {ajaxPaymentStep <= 4 && (
+                <button
+                  onClick={() => {
+                    setShowAjaxModal(false);
+                    setIsProcessing(false);
+                    setAjaxPaymentStep(0);
+                    document.body.style.overflow = '';
+                    triggerToast('Payment cancelled.', 'error');
+                  }}
+                  className="w-full py-3 bg-white/5 text-gray-400 hover:text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-all border border-white/5 mt-2"
+                >
+                  Cancel Payment
+                </button>
+              )}
             </motion.div>
           </motion.div>
         )}

@@ -802,4 +802,17 @@ body, #root {
   color: #059669;
 }
 
+/* 3D Card Flip CSS utilities */
+.perspective-container {
+  perspective: 1000px;
+}
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+
 
