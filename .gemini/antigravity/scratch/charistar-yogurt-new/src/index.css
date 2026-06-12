@@ -58,8 +58,8 @@
   --bg-card:        rgba(255, 255, 255, 0.045);
   --bg-nav:         rgba(18, 18, 20, 0.92);
   --text-primary:   #f3f4f6;
-  --text-secondary: #a1a1aa;
-  --text-muted:     #6b7280;
+  --text-secondary: #c1c5cd;
+  --text-muted:     #949aab;
   --border-color:   rgba(255, 255, 255, 0.065);
   --accent:         #A3C644;
   --accent-text:    #000000;
@@ -88,10 +88,10 @@
 
 /* Elegant Text Contrast */
 :root.theme-light .text-white { color: #111827 !important; }
-:root.theme-light .text-gray-300 { color: #4B5563 !important; }
-:root.theme-light .text-gray-400 { color: #6B7280 !important; }
-:root.theme-light .text-gray-500 { color: #9CA3AF !important; }
-:root.theme-light .text-gray-600 { color: #D1D5DB !important; }
+:root.theme-light .text-gray-300 { color: #272a30 !important; }
+:root.theme-light .text-gray-400 { color: #4b515d !important; }
+:root.theme-light .text-gray-500 { color: #4b515d !important; }
+:root.theme-light .text-gray-600 { color: #5a606d !important; }
 
 /* Subtle Borders */
 :root.theme-light .border-white\/5,
@@ -220,9 +220,9 @@
 }
 
 :root.theme-dark .text-white { color: var(--text-primary) !important; }
-:root.theme-dark .text-gray-300 { color: var(--text-secondary) !important; }
+:root.theme-dark .text-gray-300 { color: var(--text-primary) !important; }
 :root.theme-dark .text-gray-400 { color: var(--text-secondary) !important; }
-:root.theme-dark .text-gray-500 { color: var(--text-muted) !important; }
+:root.theme-dark .text-gray-500 { color: var(--text-secondary) !important; }
 :root.theme-dark .text-gray-600 { color: var(--text-muted) !important; }
 
 :root.theme-dark .border-white\/5,
@@ -812,6 +812,20 @@ body, #root {
 .backface-hidden {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
+}
+
+/* Accessibility: Scale tiny text sizes for improved legibility on mobile */
+.text-\[9px\] {
+  font-size: 11px !important;
+}
+.text-\[10px\] {
+  font-size: 11.5px !important;
+}
+.text-\[11px\] {
+  font-size: 12px !important;
+}
+.text-xs {
+  font-size: 12.5px !important;
 }
 
 
