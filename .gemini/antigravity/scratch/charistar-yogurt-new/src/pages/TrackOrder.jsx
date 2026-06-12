@@ -152,6 +152,18 @@ export default function TrackOrder() {
     }
   }, [activeStatus]);
 
+  // Lock body scroll when chat is open
+  useEffect(() => {
+    if (isChatOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isChatOpen]);
+
   const getFormattedTime = () => {
     const d = new Date();
     let hours = d.getHours();
@@ -358,7 +370,9 @@ export default function TrackOrder() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="min-h-screen pb-36 flex flex-col font-sans bg-[#050505] overflow-y-auto no-scrollbar"
+      className={`min-h-screen flex flex-col font-sans bg-[#050505] no-scrollbar ${
+        isChatOpen ? 'h-screen overflow-hidden' : 'pb-36 overflow-y-auto'
+      }`}
     >
       <style>{`
         @keyframes rider-vibrate {
@@ -807,7 +821,7 @@ export default function TrackOrder() {
                   setIsChatOpen(false);
                 }
               }}
-              className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-3 right-3 h-[78vh] bg-[#0c0c0e]/95 backdrop-blur-xl border border-white/10 rounded-[2.5rem] z-50 flex flex-col overflow-hidden max-w-[420px] mx-auto shadow-[0_15px_40px_rgba(0,0,0,0.8)]"
+              className="fixed bottom-0 sm:bottom-3 left-0 sm:left-3 right-0 sm:right-3 h-[72dvh] max-h-[calc(100dvh-1rem)] bg-[#0c0c0e]/95 backdrop-blur-xl border-t sm:border border-white/10 rounded-t-[2.5rem] sm:rounded-[2.5rem] z-50 flex flex-col overflow-hidden max-w-[420px] mx-auto shadow-[0_15px_40px_rgba(0,0,0,0.8)]"
             >
               {/* Drag Handle */}
               <div className="w-full pt-3 pb-1 flex justify-center flex-shrink-0 cursor-row-resize">
@@ -905,7 +919,7 @@ export default function TrackOrder() {
               </div>
  
               {/* Chat Input form */}
-              <form onSubmit={handleSendMessage} className="p-4 pb-6 border-t border-white/5 flex gap-3 flex-shrink-0 bg-[#0c0c0e]">
+              <form onSubmit={handleSendMessage} className="p-4 pb-[max(1.5rem,calc(0.75rem+env(safe-area-inset-bottom)))] sm:pb-6 border-t border-white/5 flex gap-3 flex-shrink-0 bg-[#0c0c0e]">
                 <div className="flex-1 bg-white/5 rounded-xl px-4 py-2.5 flex items-center border border-white/5 focus-within:border-white/10 transition-colors">
                   <input 
                     type="text" 
