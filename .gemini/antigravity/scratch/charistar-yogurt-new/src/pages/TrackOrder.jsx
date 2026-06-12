@@ -164,6 +164,37 @@ export default function TrackOrder() {
     };
   }, [isChatOpen]);
 
+  // Visual Viewport tracking for mobile keyboards
+  const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    if (!window.visualViewport) return;
+
+    const handleResize = () => {
+      const vvHeight = window.visualViewport.height;
+      const layoutHeight = window.innerHeight;
+      setViewportHeight(vvHeight);
+      
+      const diff = layoutHeight - vvHeight;
+      if (diff > 60) {
+        setKeyboardHeight(diff);
+        window.scrollTo(0, 0);
+      } else {
+        setKeyboardHeight(0);
+      }
+    };
+
+    window.visualViewport.addEventListener('resize', handleResize);
+    window.visualViewport.addEventListener('scroll', handleResize);
+    handleResize();
+
+    return () => {
+      window.visualViewport.removeEventListener('resize', handleResize);
+      window.visualViewport.removeEventListener('scroll', handleResize);
+    };
+  }, []);
+
   const getFormattedTime = () => {
     const d = new Date();
     let hours = d.getHours();
@@ -821,7 +852,11 @@ export default function TrackOrder() {
                   setIsChatOpen(false);
                 }
               }}
-              className="fixed bottom-0 sm:bottom-3 left-0 sm:left-3 right-0 sm:right-3 h-[72dvh] max-h-[calc(100dvh-1rem)] bg-[#0c0c0e]/95 backdrop-blur-xl border-t sm:border border-white/10 rounded-t-[2.5rem] sm:rounded-[2.5rem] z-50 flex flex-col overflow-hidden max-w-[420px] mx-auto shadow-[0_15px_40px_rgba(0,0,0,0.8)]"
+              style={{
+                bottom: keyboardHeight > 0 ? `${keyboardHeight}px` : undefined,
+                height: `min(72dvh, ${viewportHeight - 16}px)`
+              }}
+              className="fixed bottom-0 sm:bottom-3 left-0 sm:left-3 right-0 sm:right-3 bg-[#0c0c0e]/95 backdrop-blur-xl border-t sm:border border-white/10 rounded-t-[2.5rem] sm:rounded-[2.5rem] z-50 flex flex-col overflow-hidden max-w-[420px] mx-auto shadow-[0_15px_40px_rgba(0,0,0,0.8)] transition-[bottom,height] duration-150 ease-out"
             >
               {/* Drag Handle */}
               <div className="w-full pt-3 pb-1 flex justify-center flex-shrink-0 cursor-row-resize">
