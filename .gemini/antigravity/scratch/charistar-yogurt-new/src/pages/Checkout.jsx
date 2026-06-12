@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, CreditCard, Wallet, Smartphone, MapPin, Phone, User, 
   CheckCircle, Ticket, ShoppingBag, Bike, AlertCircle, Sparkles, 
-  ChevronRight, ArrowRight, Loader2, ClipboardList, Lock
+  ChevronRight, ArrowRight, Loader2, ClipboardList, Lock, Mail
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../contexts/CartContext';
@@ -83,10 +83,20 @@ export default function Checkout() {
   const [discount, setDiscount] = useState(0);
 
   // Payment Options & Status
-  const [paymentMethod, setPaymentMethod] = useState('wallet'); // premium default
+  const [paymentMethod, setPaymentMethod] = useState(() => currentUser ? 'wallet' : 'card');
+  const [isGuestCheckout, setIsGuestCheckout] = useState(false);
+  const [guestEmail, setGuestEmail] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState('');
+
+  useEffect(() => {
+    if (!currentUser) {
+      setPaymentMethod('card');
+    } else {
+      setPaymentMethod('wallet');
+    }
+  }, [currentUser]);
   
   // Wallet Refill Flow States
   const [showRefill, setShowRefill] = useState(false);
@@ -183,6 +193,14 @@ export default function Checkout() {
       triggerToast("Please enter your phone number.", "error");
       return false;
     }
+    if (!currentUser && !guestEmail.trim()) {
+      triggerToast("Please enter your email address.", "error");
+      return false;
+    }
+    if (!currentUser && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail.trim())) {
+      triggerToast("Please enter a valid email address.", "error");
+      return false;
+    }
     if (!delAddress.trim()) {
       triggerToast("Please enter your delivery address.", "error");
       return false;
@@ -195,7 +213,7 @@ export default function Checkout() {
   };
 
   const getCustomerEmail = () => {
-    if (!currentUser) return 'guest@charistaryogurt.com';
+    if (!currentUser) return guestEmail || 'guest@charistaryogurt.com';
     const nameToUse = delName || currentUser.name || currentUser.displayName || 'customer';
     return `${nameToUse.trim().replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'customer'}@charistaryogurt.com`;
   };
@@ -272,6 +290,17 @@ export default function Checkout() {
       };
       
       const orderRef = await addDoc(collection(db, 'orders'), firebaseOrderData);
+
+      if (!currentUser) {
+        // Store guest data for marketing purpose
+        await addDoc(collection(db, 'guests'), {
+          name: delName || 'Yogurt Lover',
+          phone: delPhone || '',
+          email: guestEmail || '',
+          orderId: orderRef.id,
+          createdAt: serverTimestamp()
+        }).catch(err => console.error("Error saving guest lead:", err));
+      }
 
       if (method === 'wallet') {
         const walletBalance = currentUser?.walletBalance || 0;
@@ -396,7 +425,7 @@ export default function Checkout() {
     { label: 'Payment' }
   ];
 
-  if (!currentUser) {
+  if (!currentUser && !isGuestCheckout) {
     return (
       <motion.div 
         initial={{ opacity: 0, y: 20 }} 
@@ -498,7 +527,7 @@ export default function Checkout() {
             </button>
           </form>
 
-          <div className="mt-5 text-center border-t border-white/5 pt-4">
+          <div className="mt-5 text-center border-t border-white/5 pt-4 flex flex-col gap-3">
             <button 
               type="button"
               onClick={() => setIsLogin(!isLogin)}
@@ -506,6 +535,20 @@ export default function Checkout() {
             >
               {isLogin ? "No account? " : "Already registered? "}
               <span className="text-charistar-green font-black ml-1">{isLogin ? 'Join now' : 'Log in'}</span>
+            </button>
+
+            <div className="flex items-center gap-2 my-1">
+              <div className="flex-1 h-[1px] bg-white/5"></div>
+              <span className="text-[9px] font-bold text-gray-600 uppercase tracking-widest">or</span>
+              <div className="flex-1 h-[1px] bg-white/5"></div>
+            </div>
+
+            <button 
+              type="button"
+              onClick={() => setIsGuestCheckout(true)}
+              className="w-full py-3 bg-[#A3C644]/10 hover:bg-[#A3C644]/20 text-[#A3C644] border border-[#A3C644]/20 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5"
+            >
+              ⚡ Checkout as Guest
             </button>
           </div>
 
@@ -892,6 +935,21 @@ export default function Checkout() {
                       />
                     </div>
                   </div>
+
+                  {!currentUser && (
+                    <div className="charistar-input-group">
+                      <Mail size={18} />
+                      <div className="w-full">
+                        <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest block mb-0.5">Email Address (Guest)</label>
+                        <input 
+                          type="email" 
+                          placeholder="your-email@example.com" 
+                          value={guestEmail} 
+                          onChange={e => setGuestEmail(e.target.value)} 
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <div className="charistar-input-group items-start pt-3">
                     <MapPin size={18} className="mt-1" />
