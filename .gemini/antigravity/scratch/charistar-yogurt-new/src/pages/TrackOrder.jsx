@@ -21,6 +21,9 @@ export default function TrackOrder() {
   const [isDialerOpen, setIsDialerOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const messagesEndRef = useRef(null);
+  const [riderRating, setRiderRating] = useState(0);
+  const [showReviewPrompt, setShowReviewPrompt] = useState(false);
+  const [particles, setParticles] = useState([]);
   
   // Chat State
   const [chatMessages, setChatMessages] = useState([
@@ -191,12 +194,10 @@ export default function TrackOrder() {
     };
 
     window.visualViewport.addEventListener('resize', handleResize);
-    window.visualViewport.addEventListener('scroll', handleResize);
     handleResize();
 
     return () => {
       window.visualViewport.removeEventListener('resize', handleResize);
-      window.visualViewport.removeEventListener('scroll', handleResize);
     };
   }, []);
 
@@ -204,9 +205,31 @@ export default function TrackOrder() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const triggerStarBurst = () => {
+    const newParticles = Array.from({ length: 12 }).map((_, i) => ({
+      id: Math.random(),
+      x: (Math.random() - 0.5) * 160,
+      y: (Math.random() - 0.5) * 100 - 50,
+      scale: Math.random() * 0.6 + 0.6,
+      angle: Math.random() * 360,
+      delay: Math.random() * 0.2
+    }));
+    setParticles(newParticles);
+    setTimeout(() => {
+      setParticles([]);
+    }, 1500);
+  };
+
+  const handleRating = (ratingValue) => {
+    setRiderRating(ratingValue);
+    if (ratingValue === 5) {
+      triggerStarBurst();
+    }
+  };
+
   useEffect(() => {
     scrollToBottom();
-  }, [chatMessages, isRiderTyping]);
+  }, [chatMessages, isRiderTyping, showReviewPrompt]);
 
   useEffect(() => {
     if (isChatOpen) {
@@ -276,6 +299,14 @@ export default function TrackOrder() {
 
       setChatMessages(prev => [...prev, { sender: 'rider', text: responseText, time: getFormattedTime() }]);
       setIsRiderTyping(false);
+
+      // Sense if the message is satisfactory to trigger a rider review card
+      const lowerText = text.toLowerCase();
+      if (lowerText.includes('thank') || lowerText.includes('spoon') || lowerText.includes('napkin') || lowerText.includes('extra') || progress >= 90) {
+        setTimeout(() => {
+          setShowReviewPrompt(true);
+        }, 1200);
+      }
     }, 3200);
   };
 
@@ -944,6 +975,63 @@ export default function TrackOrder() {
                     </div>
                   </div>
                 )}
+                
+                {showReviewPrompt && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    className="mr-auto ml-auto w-full max-w-[85%] bg-white/[0.03] border border-white/10 rounded-2xl p-4.5 text-center space-y-3 shadow-lg my-2 relative overflow-hidden"
+                  >
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">How was your delivery?</p>
+                    <h4 className="text-white text-xs font-bold">Rate Chinedu Dispatcher</h4>
+                    
+                    <div className="flex justify-center gap-2 py-1 relative">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          onClick={() => handleRating(star)}
+                          className={`text-lg transition-transform active:scale-90 ${
+                            star <= riderRating ? 'text-[#A3C644] scale-110 drop-shadow-[0_0_8px_rgba(163,198,68,0.5)]' : 'text-gray-600 hover:text-[#A3C644]/70'
+                          }`}
+                        >
+                          ★
+                        </button>
+                      ))}
+
+                      {/* Bursting Particles overlay */}
+                      {particles.map((p) => (
+                        <motion.span
+                          key={p.id}
+                          initial={{ opacity: 1, x: 0, y: 0, scale: 0, rotate: 0 }}
+                          animate={{ 
+                            opacity: 0, 
+                            x: p.x, 
+                            y: p.y, 
+                            scale: p.scale, 
+                            rotate: p.angle 
+                          }}
+                          transition={{ duration: 1.2, ease: "easeOut", delay: p.delay }}
+                          className="absolute text-yellow-400 pointer-events-none text-xs"
+                        >
+                          ★
+                        </motion.span>
+                      ))}
+                    </div>
+                    
+                    {riderRating > 0 ? (
+                      <motion.p 
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="text-[#A3C644] text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1"
+                      >
+                        🌟 Thank you for the {riderRating}-Star Rating!
+                      </motion.p>
+                    ) : (
+                      <p className="text-[9px] text-gray-500 font-medium">Tap stars to submit feedback</p>
+                    )}
+                  </motion.div>
+                )}
+                
                 <div ref={messagesEndRef} />
               </div>
  
