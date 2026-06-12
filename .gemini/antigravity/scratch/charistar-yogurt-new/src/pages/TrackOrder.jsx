@@ -176,6 +176,9 @@ export default function TrackOrder() {
     if (!window.visualViewport) return;
 
     const handleResize = () => {
+      // If chat is closed, do nothing to prevent interfering with normal page scrolling
+      if (!isChatOpen) return;
+
       const vvHeight = window.visualViewport.height;
       const layoutHeight = window.innerHeight;
       setViewportHeight(vvHeight);
@@ -183,14 +186,21 @@ export default function TrackOrder() {
       const diff = layoutHeight - vvHeight;
       if (diff > 60) {
         setKeyboardHeight(diff);
+        // Force scroll reset only when keyboard is open/focused
+        window.scrollTo(0, 0);
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
       } else {
-        setKeyboardHeight(0);
+        // Only reset scroll if the keyboard was previously open and is now closing
+        setKeyboardHeight(prev => {
+          if (prev > 0) {
+            window.scrollTo(0, 0);
+            document.body.scrollTop = 0;
+            document.documentElement.scrollTop = 0;
+          }
+          return 0;
+        });
       }
-
-      // Force page and body scroll reset to prevent keyboard shift offsets
-      window.scrollTo(0, 0);
-      document.body.scrollTop = 0;
-      document.documentElement.scrollTop = 0;
     };
 
     window.visualViewport.addEventListener('resize', handleResize);
@@ -199,7 +209,7 @@ export default function TrackOrder() {
     return () => {
       window.visualViewport.removeEventListener('resize', handleResize);
     };
-  }, []);
+  }, [isChatOpen]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
