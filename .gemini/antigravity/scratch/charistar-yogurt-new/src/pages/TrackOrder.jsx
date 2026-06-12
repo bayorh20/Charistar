@@ -179,10 +179,14 @@ export default function TrackOrder() {
       const diff = layoutHeight - vvHeight;
       if (diff > 60) {
         setKeyboardHeight(diff);
-        window.scrollTo(0, 0);
       } else {
         setKeyboardHeight(0);
       }
+
+      // Force page and body scroll reset to prevent keyboard shift offsets
+      window.scrollTo(0, 0);
+      document.body.scrollTop = 0;
+      document.documentElement.scrollTop = 0;
     };
 
     window.visualViewport.addEventListener('resize', handleResize);
@@ -953,6 +957,11 @@ export default function TrackOrder() {
                     placeholder="Type message..."
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
+                    onBlur={() => {
+                      window.scrollTo(0, 0);
+                      document.body.scrollTop = 0;
+                      document.documentElement.scrollTop = 0;
+                    }}
                     aria-label="Type message to dispatcher"
                     className="bg-transparent border-none outline-none text-white font-semibold text-xs w-full placeholder:text-gray-600"
                   />
