@@ -14,8 +14,9 @@ service cloud.firestore {
 
     // Helper: Is the user an administrator?
     function isAdmin() {
-      // Temporary bypass for testing the admin dashboard
-      return true;
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     // Products: Anyone can view, admin can write
