@@ -840,28 +840,20 @@ export default function TrackOrder() {
             />
             
             <motion.div 
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: "spring", damping: 30, stiffness: 250 }}
-              drag="y"
-              dragConstraints={{ top: 0 }}
-              dragElastic={0.2}
-              onDragEnd={(e, info) => {
-                if (info.offset.y > 120) {
-                  setIsChatOpen(false);
-                }
-              }}
+              initial={{ scale: 0.85, opacity: 0, x: '-50%', y: '-50%' }}
+              animate={{ scale: 1, opacity: 1, x: '-50%', y: '-50%' }}
+              exit={{ scale: 0.85, opacity: 0, x: '-50%', y: '-50%' }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
               style={{
-                bottom: keyboardHeight > 0 ? `${keyboardHeight}px` : undefined,
-                height: `min(72dvh, ${viewportHeight - 16}px)`
+                top: '50%',
+                left: '50%',
+                height: `min(540px, ${viewportHeight - 32}px)`,
+                width: 'calc(100% - 32px)'
               }}
-              className="fixed bottom-0 sm:bottom-3 left-0 sm:left-3 right-0 sm:right-3 bg-[#0c0c0e]/95 backdrop-blur-xl border-t sm:border border-white/10 rounded-t-[2.5rem] sm:rounded-[2.5rem] z-50 flex flex-col overflow-hidden max-w-[420px] mx-auto shadow-[0_15px_40px_rgba(0,0,0,0.8)] transition-[bottom,height] duration-150 ease-out"
+              className="fixed bg-[#0c0c0e]/95 backdrop-blur-xl border border-white/10 rounded-[2.2rem] z-50 flex flex-col overflow-hidden max-w-[400px] shadow-[0_25px_60px_rgba(0,0,0,0.85)]"
             >
-              {/* Drag Handle */}
-              <div className="w-full pt-3 pb-1 flex justify-center flex-shrink-0 cursor-row-resize">
-                <div className="w-12 h-1.5 bg-white/10 rounded-full"></div>
-              </div>
+              {/* Top Spacing */}
+              <div className="w-full pt-4 flex-shrink-0"></div>
 
               {/* Chat Header */}
               <div className="px-6 py-3 border-b border-white/5 flex items-center justify-between flex-shrink-0">
@@ -954,7 +946,7 @@ export default function TrackOrder() {
               </div>
  
               {/* Chat Input form */}
-              <form onSubmit={handleSendMessage} className="p-4 pb-[max(1.5rem,calc(0.75rem+env(safe-area-inset-bottom)))] sm:pb-6 border-t border-white/5 flex gap-3 flex-shrink-0 bg-[#0c0c0e]">
+              <form onSubmit={handleSendMessage} className="p-4 pb-4 border-t border-white/5 flex gap-3 flex-shrink-0 bg-[#0c0c0e]">
                 <div className="flex-1 bg-white/5 rounded-xl px-4 py-2.5 flex items-center border border-white/5 focus-within:border-white/10 transition-colors">
                   <input 
                     type="text" 
