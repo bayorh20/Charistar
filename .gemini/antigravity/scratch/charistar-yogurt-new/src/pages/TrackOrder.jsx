@@ -152,22 +152,51 @@ export default function TrackOrder() {
     }
   }, [activeStatus]);
 
-  const handleSendMessage = (e) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
+  const getFormattedTime = () => {
+    const d = new Date();
+    let hours = d.getHours();
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    return `${hours}:${minutes} ${ampm}`;
+  };
 
-    const userMsg = chatInput.trim();
-    setChatMessages(prev => [...prev, { sender: 'customer', text: userMsg, time: 'Just now' }]);
-    setChatInput('');
-    setIsRiderTyping(true);
+  const triggerChatLifecycle = (text) => {
+    // 1. Update status to 'delivered' after 600ms
+    setTimeout(() => {
+      setChatMessages(prev => {
+        const lastCustomerIdx = prev.map(m => m.sender).lastIndexOf('customer');
+        if (lastCustomerIdx !== -1) {
+          const updated = [...prev];
+          updated[lastCustomerIdx] = { ...updated[lastCustomerIdx], status: 'delivered' };
+          return updated;
+        }
+        return prev;
+      });
+    }, 600);
 
+    // 2. Update status to 'seen' after 1300ms and show typing indicator
+    setTimeout(() => {
+      setChatMessages(prev => {
+        const lastCustomerIdx = prev.map(m => m.sender).lastIndexOf('customer');
+        if (lastCustomerIdx !== -1) {
+          const updated = [...prev];
+          updated[lastCustomerIdx] = { ...updated[lastCustomerIdx], status: 'seen' };
+          return updated;
+        }
+        return prev;
+      });
+      setIsRiderTyping(true);
+    }, 1300);
+
+    // 3. Post rider response after 3200ms
     setTimeout(() => {
       let responseText = "Got it! Pedaling as fast as I can safely go. 🚴‍♂️💨";
-      const lower = userMsg.toLowerCase();
+      const lower = text.toLowerCase();
       
-      if (lower.includes('cold') || lower.includes('melt')) {
+      if (lower.includes('cold') || lower.includes('melt') || lower.includes('insulate')) {
         responseText = "Your items are secured in our insulated carrier bag. Meticulously packed! ❄️🛍️";
-      } else if (lower.includes('where') || lower.includes('located') || lower.includes('position')) {
+      } else if (lower.includes('where') || lower.includes('located') || lower.includes('position') || lower.includes('currently')) {
         if (progress < 30) {
           responseText = "Just packing up the carrier at the Ibadan Kitchen! Leaving in 1 minute. 🎒📍";
         } else if (progress < 75) {
@@ -183,9 +212,32 @@ export default function TrackOrder() {
         responseText = "My absolute pleasure! Enjoy your meal. ❤️🍴";
       }
 
-      setChatMessages(prev => [...prev, { sender: 'rider', text: responseText, time: 'Just now' }]);
+      setChatMessages(prev => [...prev, { sender: 'rider', text: responseText, time: getFormattedTime() }]);
       setIsRiderTyping(false);
-    }, 1200);
+    }, 3200);
+  };
+
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const userMsg = chatInput.trim();
+    const timeStr = getFormattedTime();
+    const newMsg = { sender: 'customer', text: userMsg, time: timeStr, status: 'sent' };
+    
+    setChatMessages(prev => [...prev, newMsg]);
+    setChatInput('');
+
+    triggerChatLifecycle(userMsg);
+  };
+
+  const handleSendSuggestion = (suggestText) => {
+    const timeStr = getFormattedTime();
+    const newMsg = { sender: 'customer', text: suggestText, time: timeStr, status: 'sent' };
+    
+    setChatMessages(prev => [...prev, newMsg]);
+
+    triggerChatLifecycle(suggestText);
   };
 
   const steps = [
@@ -316,12 +368,33 @@ export default function TrackOrder() {
         .vibrating-bike {
           animation: rider-vibrate 0.15s ease-in-out infinite;
         }
+        @keyframes typing-bounce {
+          0%, 100% { transform: translateY(0); opacity: 0.4; }
+          50% { transform: translateY(-3px); opacity: 1; }
+        }
+        .typing-dot {
+          display: inline-block;
+          width: 4px;
+          height: 4px;
+          border-radius: 50%;
+          animation: typing-bounce 0.8s infinite ease-in-out;
+        }
+        .typing-dot:nth-child(2) {
+          animation-delay: 0.15s;
+        }
+        .typing-dot:nth-child(3) {
+          animation-delay: 0.3s;
+        }
       `}</style>
 
       {/* HEADER */}
       <div className="sticky top-0 z-30 bg-[#050505] px-6 pt-12 pb-5 flex items-center justify-between border-b border-white/5">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/orders')} className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center hover:bg-white/10 active:scale-95 transition-transform border border-white/5">
+          <button 
+            onClick={() => navigate('/orders')} 
+            aria-label="Back to orders list"
+            className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center hover:bg-white/10 active:scale-95 transition-transform border border-white/5"
+          >
             <ArrowLeft size={16} className="text-white" />
           </button>
           <div>
@@ -417,12 +490,12 @@ export default function TrackOrder() {
             )}
           </div>
 
-          <div className="relative w-full h-[180px] bg-[#f8fafc] rounded-2xl border border-slate-200 overflow-hidden shadow-inner">
+          <div className="relative w-full h-[180px] bg-[#0c0c0e] rounded-2xl border border-white/5 overflow-hidden shadow-inner">
             <svg className="w-full h-full overflow-visible" viewBox="0 0 340 180" fill="none" xmlns="http://www.w3.org/2000/svg">
               {/* STYLIZED GRID PATTERN (Streets background) */}
               <defs>
                 <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
-                  <path d="M 30 0 L 0 0 0 30" fill="none" stroke="rgba(0, 0, 0, 0.03)" strokeWidth="1" />
+                  <path d="M 30 0 L 0 0 0 30" fill="none" stroke="rgba(255, 255, 255, 0.02)" strokeWidth="1" />
                 </pattern>
                 <linearGradient id="routeGlow" x1="0%" y1="0%" x2="100%" y2="0%">
                   <stop offset="0%" stopColor="#A3C644" stopOpacity="0.9" />
@@ -434,33 +507,33 @@ export default function TrackOrder() {
               {/* WATERWAY (Dandola River Representation) */}
               <path 
                 d="M 190 0 L 150 180 H 220 L 260 0 Z" 
-                fill="rgba(59, 130, 246, 0.08)" 
-                stroke="rgba(59, 130, 246, 0.12)" 
+                fill="rgba(59, 130, 246, 0.12)" 
+                stroke="rgba(59, 130, 246, 0.2)" 
                 strokeWidth="1"
               />
 
               {/* PARKS / GREEN AREAS */}
-              <rect x="20" y="15" width="60" height="35" rx="8" fill="rgba(16, 185, 129, 0.05)" stroke="rgba(16, 185, 129, 0.08)" strokeWidth="1" />
+              <rect x="20" y="15" width="60" height="35" rx="8" fill="rgba(16, 185, 129, 0.07)" stroke="rgba(16, 185, 129, 0.15)" strokeWidth="1" />
 
-              <rect x="250" y="120" width="70" height="40" rx="8" fill="rgba(16, 185, 129, 0.05)" stroke="rgba(16, 185, 129, 0.08)" strokeWidth="1" />
+              <rect x="250" y="120" width="70" height="40" rx="8" fill="rgba(16, 185, 129, 0.07)" stroke="rgba(16, 185, 129, 0.15)" strokeWidth="1" />
 
               {/* BACKGROUND DECORATIVE ROADS (Fake street grid) */}
-              <path d="M 0 130 H 340" stroke="rgba(0,0,0,0.025)" strokeWidth="4" />
-              <path d="M 110 0 V 180" stroke="rgba(0,0,0,0.025)" strokeWidth="4" />
-              <path d="M 230 0 V 180" stroke="rgba(0,0,0,0.025)" strokeWidth="4" />
-              <path d="M 310 0 V 180" stroke="rgba(0,0,0,0.025)" strokeWidth="4" />
+              <path d="M 0 130 H 340" stroke="rgba(255, 255, 255, 0.03)" strokeWidth="4" />
+              <path d="M 110 0 V 180" stroke="rgba(255, 255, 255, 0.03)" strokeWidth="4" />
+              <path d="M 230 0 V 180" stroke="rgba(255, 255, 255, 0.03)" strokeWidth="4" />
+              <path d="M 310 0 V 180" stroke="rgba(255, 255, 255, 0.03)" strokeWidth="4" />
 
               {/* ACTUAL ACTIVE TRANSIT ROAD OUTLINE */}
               <path 
                 d="M 30,130 C 110,130 150,70 180,70 C 210,70 250,110 310,110" 
-                stroke="rgba(0,0,0,0.05)" 
+                stroke="rgba(255, 255, 255, 0.07)" 
                 strokeWidth="6" 
                 strokeLinecap="round" 
                 strokeLinejoin="round"
               />
               <path 
                 d="M 30,130 C 110,130 150,70 180,70 C 210,70 250,110 310,110" 
-                stroke="#e2e8f0" 
+                stroke="#1e293b" 
                 strokeWidth="4" 
                 strokeLinecap="round" 
                 strokeLinejoin="round"
@@ -481,14 +554,14 @@ export default function TrackOrder() {
               {/* LANDMARKS / NODES */}
               {/* Start Store Node (Lagos Kitchen) */}
               <g transform="translate(30, 130)">
-                <circle r="9" fill="#ffffff" stroke="#A3C644" strokeWidth="2.5" className="shadow-md" />
+                <circle r="9" fill="#0c0c0e" stroke="#A3C644" strokeWidth="2.5" className="shadow-md" />
                 <circle r="4" fill="#A3C644" />
               </g>
 
               {/* Destination Residence Node */}
               <g transform="translate(310, 110)">
-                <circle r="9" fill="#ffffff" stroke={activeStatus === 'delivered' ? '#A3C644' : 'rgba(0,0,0,0.15)'} strokeWidth={2.5} className="shadow-md" />
-                <circle r="4" fill={activeStatus === 'delivered' ? '#A3C644' : 'rgba(0,0,0,0.2)'} />
+                <circle r="9" fill="#0c0c0e" stroke={activeStatus === 'delivered' ? '#A3C644' : 'rgba(255,255,255,0.15)'} strokeWidth={2.5} className="shadow-md" />
+                <circle r="4" fill={activeStatus === 'delivered' ? '#A3C644' : 'rgba(255,255,255,0.2)'} />
               </g>
 
 
@@ -574,22 +647,41 @@ export default function TrackOrder() {
             
             <div className="space-y-0.5">
               <h3 className="text-white text-xs font-bold tracking-tight">Chinedu Dispatcher</h3>
-              <p className="text-gray-500 text-[9px] font-bold uppercase tracking-widest">Charistar Dispatch</p>
+              {isRiderTyping ? (
+                <div className="flex items-center gap-1 text-[#A3C644] text-[9px] font-bold uppercase tracking-widest">
+                  <span>Typing</span>
+                  <span className="flex gap-0.5 items-center mb-0.5">
+                    <span className="typing-dot bg-[#A3C644]" />
+                    <span className="typing-dot bg-[#A3C644]" />
+                    <span className="typing-dot bg-[#A3C644]" />
+                  </span>
+                </div>
+              ) : (
+                <p className="text-gray-500 text-[9px] font-bold uppercase tracking-widest">Charistar Dispatch</p>
+              )}
             </div>
           </div>
 
           <div className="flex gap-2">
             <button 
               onClick={() => setIsDialerOpen(true)}
+              aria-label="Call dispatcher"
               className="w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-300 border border-white/5 active:scale-95 transition-transform"
             >
               <Phone size={14} />
             </button>
             <button 
               onClick={() => setIsChatOpen(true)}
-              className="w-9 h-9 rounded-lg bg-[#A3C644] text-black flex items-center justify-center active:scale-95 transition-transform"
+              aria-label="Chat with dispatcher"
+              className="w-9 h-9 rounded-lg bg-[#A3C644] text-black flex items-center justify-center active:scale-95 transition-transform relative"
             >
               <MessageSquare size={14} strokeWidth={2.5} />
+              {isRiderTyping && (
+                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border border-[#050505]"></span>
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -598,6 +690,7 @@ export default function TrackOrder() {
         <div className="rounded-2xl border border-white/5 overflow-hidden bg-white/[0.02]">
           <button 
             onClick={() => setIsSummaryExpanded(!isSummaryExpanded)}
+            aria-label="Toggle order items details"
             className="w-full px-5 py-4 flex items-center justify-between text-left text-[11px] font-bold text-white uppercase tracking-wider"
           >
             <span>Items & Payment</span>
@@ -672,6 +765,7 @@ export default function TrackOrder() {
 
             <a 
               href={`tel:${order?.customerDetails?.phone || '080000000'}`}
+              aria-label="Call dispatcher phone number"
               className="px-6 h-11 bg-[#A3C644] text-black font-bold uppercase tracking-wider text-[11px] rounded-xl flex items-center justify-center gap-2 mt-6 active:scale-95 transition-transform"
             >
               <Phone size={13} /> Launch Call
@@ -679,6 +773,7 @@ export default function TrackOrder() {
 
             <button 
               onClick={() => setIsDialerOpen(false)}
+              aria-label="Close call dialer panel"
               className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center text-red-400 border border-white/5 hover:bg-white/10 active:scale-95 transition-transform mt-10"
             >
               <X size={16} />
@@ -704,30 +799,55 @@ export default function TrackOrder() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: "spring", damping: 30, stiffness: 250 }}
-              className="fixed bottom-0 left-0 right-0 h-[80vh] bg-[#050505] border-t border-white/10 rounded-t-3xl z-50 flex flex-col overflow-hidden max-w-[420px] mx-auto"
+              drag="y"
+              dragConstraints={{ top: 0 }}
+              dragElastic={0.2}
+              onDragEnd={(e, info) => {
+                if (info.offset.y > 120) {
+                  setIsChatOpen(false);
+                }
+              }}
+              className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-3 right-3 h-[78vh] bg-[#0c0c0e]/95 backdrop-blur-xl border border-white/10 rounded-[2.5rem] z-50 flex flex-col overflow-hidden max-w-[420px] mx-auto shadow-[0_15px_40px_rgba(0,0,0,0.8)]"
             >
+              {/* Drag Handle */}
+              <div className="w-full pt-3 pb-1 flex justify-center flex-shrink-0 cursor-row-resize">
+                <div className="w-12 h-1.5 bg-white/10 rounded-full"></div>
+              </div>
+
               {/* Chat Header */}
-              <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between flex-shrink-0">
+              <div className="px-6 py-3 border-b border-white/5 flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10">
+                  <div className="w-8 h-8 rounded-full overflow-hidden border border-white/10 bg-white/5">
                     <img src="https://ui-avatars.com/api/?name=Chinedu+Dispatcher&background=ccff00&color=000&size=80" alt="Rider" className="w-full h-full object-cover" />
                   </div>
                   <div>
                     <h3 className="text-white text-xs font-bold leading-tight">Chinedu Dispatcher</h3>
-                    <p className="text-[9px] text-[#A3C644] font-bold uppercase tracking-widest mt-0.5">
-                      Transit Rider
-                    </p>
+                    {isRiderTyping ? (
+                      <div className="flex items-center gap-1 text-[#A3C644] text-[9px] font-bold uppercase tracking-widest mt-0.5">
+                        <span>Typing</span>
+                        <span className="flex gap-0.5 items-center mb-0.5">
+                          <span className="typing-dot bg-[#A3C644]" />
+                          <span className="typing-dot bg-[#A3C644]" />
+                          <span className="typing-dot bg-[#A3C644]" />
+                        </span>
+                      </div>
+                    ) : (
+                      <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest mt-0.5">
+                        Transit Rider
+                      </p>
+                    )}
                   </div>
                 </div>
-
+ 
                 <button 
                   onClick={() => setIsChatOpen(false)}
-                  className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center border border-white/5 text-white"
+                  aria-label="Close chat drawer"
+                  className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center border border-white/5 text-white transition-colors"
                 >
                   <X size={12} />
                 </button>
               </div>
-
+ 
               {/* Chat Messages */}
               <div className="flex-1 p-6 overflow-y-auto no-scrollbar space-y-4">
                 {chatMessages.map((msg, idx) => (
@@ -742,21 +862,30 @@ export default function TrackOrder() {
                     }`}>
                       {msg.text}
                     </div>
-                    <span className="text-[8px] text-gray-500 font-semibold mt-1 px-1">{msg.time}</span>
+                    <div className="flex items-center gap-1.5 mt-1 px-1 justify-end">
+                      <span className="text-[8px] text-gray-500 font-semibold">{msg.time}</span>
+                      {msg.sender === 'customer' && (
+                        <span className="text-[9px] font-bold leading-none select-none flex items-center">
+                          {msg.status === 'sent' && <span className="text-gray-600">✓</span>}
+                          {msg.status === 'delivered' && <span className="text-gray-500">✓✓</span>}
+                          {msg.status === 'seen' && <span className="text-[#A3C644]">✓✓</span>}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 ))}
-
+ 
                 {isRiderTyping && (
-                  <div className="flex flex-col mr-auto items-start max-w-[80%] animate-pulse">
-                    <div className="bg-white/5 text-white border border-white/5 p-3 rounded-2xl rounded-tl-none flex items-center gap-1">
-                      <span className="w-1 h-1 rounded-full bg-[#A3C644] animate-bounce"></span>
-                      <span className="w-1 h-1 rounded-full bg-[#A3C644] animate-bounce delay-150"></span>
-                      <span className="w-1 h-1 rounded-full bg-[#A3C644] animate-bounce delay-300"></span>
+                  <div className="flex flex-col mr-auto items-start max-w-[80%]">
+                    <div className="bg-white/5 text-white border border-white/5 px-4 py-3.5 rounded-2xl rounded-tl-none flex items-center gap-1">
+                      <span className="typing-dot bg-white" />
+                      <span className="typing-dot bg-white" />
+                      <span className="typing-dot bg-white" />
                     </div>
                   </div>
                 )}
               </div>
-
+ 
               {/* Rapid Suggestions */}
               <div className="px-6 py-2.5 bg-white/[0.01] border-t border-white/5 flex gap-2 overflow-x-auto no-scrollbar flex-shrink-0">
                 {[
@@ -767,28 +896,30 @@ export default function TrackOrder() {
                 ].map((suggest, sIdx) => (
                   <button 
                     key={sIdx}
-                    onClick={() => setChatInput(suggest)}
+                    onClick={() => handleSendSuggestion(suggest)}
                     className="flex-shrink-0 bg-white/5 hover:bg-white/10 border border-white/5 text-gray-300 text-[9px] font-bold uppercase tracking-wider px-3.5 py-2 rounded-full transition-colors"
                   >
                     {suggest}
                   </button>
                 ))}
               </div>
-
+ 
               {/* Chat Input form */}
-              <form onSubmit={handleSendMessage} className="p-4 border-t border-white/5 flex gap-3 flex-shrink-0 bg-[#050505]">
+              <form onSubmit={handleSendMessage} className="p-4 pb-6 border-t border-white/5 flex gap-3 flex-shrink-0 bg-[#0c0c0e]">
                 <div className="flex-1 bg-white/5 rounded-xl px-4 py-2.5 flex items-center border border-white/5 focus-within:border-white/10 transition-colors">
                   <input 
                     type="text" 
                     placeholder="Type message..."
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
+                    aria-label="Type message to dispatcher"
                     className="bg-transparent border-none outline-none text-white font-semibold text-xs w-full placeholder:text-gray-600"
                   />
                 </div>
                 
                 <button 
                   type="submit"
+                  aria-label="Send text message"
                   className="w-10 h-10 bg-[#A3C644] text-black rounded-xl flex items-center justify-center active:scale-95 transition-transform"
                 >
                   <Send size={14} className="stroke-[2.5px]" />
