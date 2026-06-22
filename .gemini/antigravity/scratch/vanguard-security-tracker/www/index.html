@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#090a0f">
+    <meta name="description" content="Vanguard — Advanced Anti-Theft Device Security">
+    <title>Vanguard Security</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Mapbox CSS (non-blocking) -->
+    <link href='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css' rel='stylesheet' />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  SCREEN 0: LOGIN                                        -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="screen-login" class="fullscreen active">
+    <div class="bg-matrix"></div>
+    <div class="login-wrap">
+        <div class="login-logo">
+            <div class="logo-ring">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h1>VANGUARD</h1>
+            <p>Advanced Device Security</p>
+        </div>
+
+        <div class="glass-card login-card">
+            <div class="tab-toggle" id="auth-tab-toggle">
+                <button class="tab-btn active" data-tab="login">Sign In</button>
+                <button class="tab-btn" data-tab="register">Register</button>
+            </div>
+
+            <div id="auth-panel-login">
+                <div class="field-group">
+                    <label>Email</label>
+                    <input type="email" id="login-email" placeholder="you@email.com" autocomplete="email">
+                </div>
+                <div class="field-group">
+                    <label>Password</label>
+                    <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+                </div>
+                <button class="btn-primary" id="btn-login">
+                    <i class="fa-solid fa-right-to-bracket"></i> Sign In Securely
+                </button>
+            </div>
+
+            <div id="auth-panel-register" style="display:none;">
+                <div class="field-group">
+                    <label>Full Name</label>
+                    <input type="text" id="reg-name" placeholder="Your Name">
+                </div>
+                <div class="field-group">
+                    <label>Email</label>
+                    <input type="email" id="reg-email" placeholder="you@email.com">
+                </div>
+                <div class="field-group">
+                    <label>Password</label>
+                    <input type="password" id="reg-password" placeholder="Min 6 characters">
+                </div>
+                <button class="btn-primary" id="btn-register">
+                    <i class="fa-solid fa-user-plus"></i> Create Account
+                </button>
+            </div>
+
+            <p id="auth-error" class="error-msg"></p>
+            <p id="auth-demo" class="demo-link"><a href="#" id="btn-demo-skip">Skip for now (Demo Mode)</a></p>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  SCREEN 1: ROLE SELECTION                               -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="screen-role" class="fullscreen" style="display:none;">
+    <div class="bg-matrix"></div>
+    <div class="role-wrap">
+        <div class="role-header">
+            <h2>How are you using<br>this device?</h2>
+            <p>You can change this in Settings anytime.</p>
+        </div>
+
+        <div class="role-cards">
+            <button class="role-card" id="btn-role-tracker">
+                <div class="role-icon tracker-icon">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                </div>
+                <h3>Tracker Mode</h3>
+                <p>Install on the phone you want to protect. Runs silently in the background.</p>
+                <div class="role-badge">This Phone Gets Protected</div>
+            </button>
+
+            <button class="role-card" id="btn-role-commander">
+                <div class="role-icon commander-icon">
+                    <i class="fa-solid fa-satellite-dish"></i>
+                </div>
+                <h3>Commander Mode</h3>
+                <p>Use your laptop or another phone to monitor, locate and control stolen devices.</p>
+                <div class="role-badge commander-badge">This Device Controls Others</div>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  TRACKER APP                                            -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="app-tracker" class="app-shell" style="display:none;">
+    <div class="bg-matrix"></div>
+
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-logo">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>VANGUARD</span>
+        </div>
+        <div class="header-right">
+            <div class="connection-dot" id="tracker-conn-dot" title="Offline"></div>
+            <button class="icon-btn" id="tracker-btn-logout" title="Logout">
+                <i class="fa-solid fa-right-from-bracket"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="app-body" id="tracker-body">
+
+        <!-- TAB: HOME -->
+        <section class="tab-screen active" id="tracker-tab-home">
+            <!-- Status Shield -->
+            <div class="shield-hero">
+                <div class="shield-glow" id="tracker-shield-glow"></div>
+                <div class="shield-icon" id="tracker-shield-icon">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div class="shield-status" id="tracker-shield-status">PROTECTED</div>
+                <div class="shield-sub" id="tracker-shield-sub">Device is being monitored</div>
+            </div>
+
+            <!-- System Protection Toggle -->
+            <div class="protection-toggle-card">
+                <div class="protection-toggle-info">
+                    <h3>System Protection</h3>
+                    <p id="tracker-protection-desc">Active and monitoring device security</p>
+                </div>
+                <label class="vg-switch">
+                    <input type="checkbox" id="tracker-protection-toggle" checked>
+                    <span class="vg-slider"></span>
+                </label>
+            </div>
+
+            <!-- Stats Row -->
+            <div class="stats-row">
+                <div class="stat-card">
+                    <i class="fa-solid fa-battery-three-quarters" style="color: var(--green)"></i>
+                    <span id="tracker-battery">--</span>
+                    <label>Battery</label>
+                </div>
+                <div class="stat-card">
+                    <i class="fa-solid fa-location-dot" style="color: var(--primary)"></i>
+                    <span id="tracker-gps-status">--</span>
+                    <label>GPS</label>
+                </div>
+                <div class="stat-card">
+                    <i class="fa-solid fa-wifi" style="color: var(--cyan)"></i>
+                    <span id="tracker-network">--</span>
+                    <label>Network</label>
+                </div>
+            </div>
+
+            <!-- Last Known Location -->
+            <div class="info-card" id="tracker-location-card">
+                <div class="info-card-header">
+                    <i class="fa-solid fa-map-pin"></i>
+                    Last Known Location
+                </div>
+                <div class="info-card-body" id="tracker-location-text">Acquiring GPS…</div>
+                <div class="info-card-sub" id="tracker-location-time"></div>
+            </div>
+
+            <!-- Device ID -->
+            <div class="info-card">
+                <div class="info-card-header">
+                    <i class="fa-solid fa-fingerprint"></i>
+                    Device ID
+                </div>
+                <div class="info-card-body monospace" id="tracker-device-id">Generating…</div>
+                <div class="info-card-sub">Share this with your Commander app to link devices</div>
+            </div>
+
+            <button class="btn-danger-outline" id="btn-report-safe">
+                <i class="fa-solid fa-circle-check"></i> Report Device Safe
+            </button>
+
+            <!-- Compact Event Log on Home -->
+            <div class="home-log-card">
+                <div class="home-log-header">
+                    <span><i class="fa-solid fa-wave-square"></i> Recent Activity</span>
+                    <button class="icon-btn-sm" id="btn-clear-tracker-log"><i class="fa-solid fa-trash"></i></button>
+                </div>
+                <div class="event-feed compact" id="tracker-event-feed">
+                    <div class="empty-state" style="padding:24px 16px;">
+                        <i class="fa-solid fa-satellite-dish"></i>
+                        <p>Monitoring… Events appear here.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB: PERMISSIONS -->
+        <section class="tab-screen" id="tracker-tab-permissions">
+            <div class="perm-header-block">
+                <div class="perm-header-icon">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <h2>Permission Manager</h2>
+                <p>Vanguard needs these permissions to protect your device. Grant all for full protection.</p>
+            </div>
+
+            <!-- Grant All Button -->
+            <button class="btn-primary" id="btn-grant-all">
+                <i class="fa-solid fa-bolt"></i> Grant All Permissions
+            </button>
+
+            <!-- Permission Cards -->
+            <div class="perm-cards">
+
+                <div class="perm-card" id="pcard-camera">
+                    <div class="perm-card-left">
+                        <div class="perm-card-icon" style="background:rgba(124,107,255,0.15);color:var(--primary)">
+                            <i class="fa-solid fa-camera"></i>
+                        </div>
+                        <div class="perm-card-info">
+                            <strong>Camera</strong>
+                            <span>Captures thief photos automatically</span>
+                            <small id="perm-camera-status">Not granted</small>
+                        </div>
+                    </div>
+                    <button class="perm-card-btn" id="btn-req-camera">Grant</button>
+                </div>
+
+                <div class="perm-card" id="pcard-location">
+                    <div class="perm-card-left">
+                        <div class="perm-card-icon" style="background:rgba(0,229,160,0.15);color:var(--green)">
+                            <i class="fa-solid fa-location-dot"></i>
+                        </div>
+                        <div class="perm-card-info">
+                            <strong>Location (GPS)</strong>
+                            <span>Tracks stolen device in real-time</span>
+                            <small id="perm-location-status">Not granted</small>
+                        </div>
+                    </div>
+                    <button class="perm-card-btn" id="btn-req-location">Grant</button>
+                </div>
+
+                <div class="perm-card" id="pcard-mic">
+                    <div class="perm-card-left">
+                        <div class="perm-card-icon" style="background:rgba(0,207,255,0.15);color:var(--cyan)">
+                            <i class="fa-solid fa-microphone"></i>
+                        </div>
+                        <div class="perm-card-info">
+                            <strong>Microphone</strong>
+                            <span>Records ambient audio when stolen</span>
+                            <small id="perm-mic-status">Not granted</small>
+                        </div>
+                    </div>
+                    <button class="perm-card-btn" id="btn-req-mic">Grant</button>
+                </div>
+
+                <div class="perm-card" id="pcard-notif">
+                    <div class="perm-card-left">
+                        <div class="perm-card-icon" style="background:rgba(245,197,24,0.15);color:var(--yellow)">
+                            <i class="fa-solid fa-bell"></i>
+                        </div>
+                        <div class="perm-card-info">
+                            <strong>Notifications</strong>
+                            <span>Sends alerts when activity is detected</span>
+                            <small id="perm-notif-status">Not granted</small>
+                        </div>
+                    </div>
+                    <button class="perm-card-btn" id="btn-req-notif">Grant</button>
+                </div>
+
+                <div class="perm-card" id="pcard-sms">
+                    <div class="perm-card-left">
+                        <div class="perm-card-icon" style="background:rgba(124,107,255,0.12);color:var(--primary)">
+                            <i class="fa-solid fa-message"></i>
+                        </div>
+                        <div class="perm-card-info">
+                            <strong>SMS (Read &amp; Send)</strong>
+                            <span>Receives secret trigger word by SMS</span>
+                            <small id="perm-sms-status">Requires native app</small>
+                        </div>
+                    </div>
+                    <button class="perm-card-btn" id="btn-req-sms">Info</button>
+                </div>
+
+                <div class="perm-card danger-perm-card" id="pcard-admin">
+                    <div class="perm-card-left">
+                        <div class="perm-card-icon" style="background:rgba(255,59,92,0.15);color:var(--danger)">
+                            <i class="fa-solid fa-lock"></i>
+                        </div>
+                        <div class="perm-card-info">
+                            <strong>Anti-Uninstall Lock</strong>
+                            <span>Prevents thief from deleting Vanguard</span>
+                            <small id="perm-admin-status">Not active</small>
+                        </div>
+                    </div>
+                    <button class="perm-card-btn danger-perm-card-btn" id="btn-req-admin">Activate</button>
+                </div>
+
+            </div>
+
+            <!-- Overall Score -->
+            <div class="perm-score-card">
+                <div class="perm-score-left">
+                    <strong>Protection Score</strong>
+                    <span id="perm-score-label">0 / 5 permissions granted</span>
+                </div>
+                <div class="perm-score-ring" id="perm-score-ring">
+                    <span id="perm-score-pct">0%</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB: SETTINGS -->
+        <section class="tab-screen" id="tracker-tab-settings">
+            <h2 class="screen-title">Tracker Settings</h2>
+
+            <!-- SMS Trigger -->
+            <div class="settings-group">
+                <div class="settings-group-title">
+                    <i class="fa-solid fa-message"></i> SMS Remote Trigger
+                </div>
+                <div class="field-group">
+                    <label>Secret Trigger Word</label>
+                    <input type="text" id="sms-trigger-word" placeholder="e.g. FIND ME" value="FIND ME">
+                </div>
+                <div class="field-group">
+                    <label>Owner's Phone Number (replies go here)</label>
+                    <input type="tel" id="sms-owner-number" placeholder="+234 800 000 0000">
+                </div>
+                <button class="btn-secondary" id="btn-save-sms">
+                    <i class="fa-solid fa-floppy-disk"></i> Save SMS Settings
+                </button>
+                <p class="helper-text">If stolen, text "<span id="sms-word-preview">FIND ME</span>" to this phone and it will reply with its GPS location.</p>
+            </div>
+
+            <!-- Permissions -->
+            <div class="settings-group">
+                <div class="settings-group-title">
+                    <i class="fa-solid fa-shield-halved"></i> Permissions
+                </div>
+                <div class="perm-row">
+                    <div class="perm-info">
+                        <i class="fa-solid fa-camera" style="color:var(--primary)"></i>
+                        <div>
+                            <strong>Camera</strong>
+                            <small id="perm-camera-status">Not granted</small>
+                        </div>
+                    </div>
+                    <button class="btn-perm" id="btn-req-camera">Grant</button>
+                </div>
+                <div class="perm-row">
+                    <div class="perm-info">
+                        <i class="fa-solid fa-location-dot" style="color:var(--green)"></i>
+                        <div>
+                            <strong>Location</strong>
+                            <small id="perm-location-status">Not granted</small>
+                        </div>
+                    </div>
+                    <button class="btn-perm" id="btn-req-location">Grant</button>
+                </div>
+                <div class="perm-row">
+                    <div class="perm-info">
+                        <i class="fa-solid fa-bell" style="color:var(--yellow)"></i>
+                        <div>
+                            <strong>Notifications</strong>
+                            <small id="perm-notif-status">Not granted</small>
+                        </div>
+                    </div>
+                    <button class="btn-perm" id="btn-req-notif">Grant</button>
+                </div>
+                <div class="perm-row">
+                    <div class="perm-info">
+                        <i class="fa-solid fa-lock" style="color:var(--danger)"></i>
+                        <div>
+                            <strong>Anti-Uninstall Lock</strong>
+                            <small id="perm-admin-status">Not active</small>
+                        </div>
+                    </div>
+                    <button class="btn-perm danger-perm" id="btn-req-admin">Activate</button>
+                </div>
+            </div>
+
+            <!-- Emergency Contacts -->
+            <div class="settings-group">
+                <div class="settings-group-title">
+                    <i class="fa-solid fa-address-book"></i> Emergency Contacts
+                </div>
+                <div class="field-group">
+                    <label>Contact 1 Name</label>
+                    <input type="text" id="contact-name-1" placeholder="e.g. Mum">
+                </div>
+                <div class="field-group">
+                    <label>Contact 1 Phone</label>
+                    <input type="tel" id="contact-phone-1" placeholder="+234 800 000 0000">
+                </div>
+                <div class="field-group">
+                    <label>Contact 2 Name</label>
+                    <input type="text" id="contact-name-2" placeholder="e.g. Dad">
+                </div>
+                <div class="field-group">
+                    <label>Contact 2 Phone</label>
+                    <input type="tel" id="contact-phone-2" placeholder="+234 800 000 0000">
+                </div>
+                <button class="btn-secondary" id="btn-save-contacts">
+                    <i class="fa-solid fa-floppy-disk"></i> Save Contacts
+                </button>
+            </div>
+
+            <!-- Security & App Lock -->
+            <div class="settings-group">
+                <div class="settings-group-title">
+                    <i class="fa-solid fa-key"></i> Security & App Lock
+                </div>
+                <div class="perm-row">
+                    <div class="perm-info">
+                        <i class="fa-solid fa-lock" style="color:var(--primary)"></i>
+                        <div>
+                            <strong>Enable PIN Protection</strong>
+                            <span>Protect app from unauthorized changes</span>
+                        </div>
+                    </div>
+                    <label class="vg-switch">
+                        <input type="checkbox" id="settings-pin-enable">
+                        <span class="vg-slider"></span>
+                    </label>
+                </div>
+                <div class="perm-row">
+                    <div class="perm-info">
+                        <i class="fa-solid fa-gears" style="color:var(--yellow)"></i>
+                        <div>
+                            <strong>Lock Settings & Permissions</strong>
+                            <span>Require PIN to open sensitive tabs</span>
+                        </div>
+                    </div>
+                    <label class="vg-switch">
+                        <input type="checkbox" id="settings-pin-lock-settings">
+                        <span class="vg-slider"></span>
+                    </label>
+                </div>
+                <div class="perm-row">
+                    <div class="perm-info">
+                        <i class="fa-solid fa-power-off" style="color:var(--danger)"></i>
+                        <div>
+                            <strong>Lock Protection Switch</strong>
+                            <span>Require PIN to pause protection</span>
+                        </div>
+                    </div>
+                    <label class="vg-switch">
+                        <input type="checkbox" id="settings-pin-lock-toggle">
+                        <span class="vg-slider"></span>
+                    </label>
+                </div>
+                <button class="btn-secondary" id="btn-change-pin" style="margin-top: 12px;">
+                    <i class="fa-solid fa-keyboard"></i> Setup / Change PIN
+                </button>
+            </div>
+
+            <!-- Switch Mode -->
+            <div class="settings-group">
+                <div class="settings-group-title">
+                    <i class="fa-solid fa-arrows-rotate"></i> Switch Mode
+                </div>
+                <button class="btn-outline" id="tracker-btn-switch-mode">
+                    <i class="fa-solid fa-satellite-dish"></i> Switch to Commander Mode
+                </button>
+                <button class="btn-danger-outline" id="tracker-btn-logout2">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+        <button class="nav-btn active" data-tab="tracker-tab-home">
+            <i class="fa-solid fa-house"></i>
+            <span>Home</span>
+        </button>
+        <button class="nav-btn" data-tab="tracker-tab-permissions">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>Permissions</span>
+        </button>
+        <button class="nav-btn" data-tab="tracker-tab-settings">
+            <i class="fa-solid fa-gear"></i>
+            <span>Settings</span>
+        </button>
+    </nav>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  COMMANDER APP                                          -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="app-commander" class="app-shell" style="display:none;">
+    <div class="bg-matrix"></div>
+
+    <!-- Header -->
+    <header class="app-header">
+        <div class="header-logo">
+            <i class="fa-solid fa-satellite-dish" style="color:var(--green)"></i>
+            <span>COMMANDER</span>
+        </div>
+        <div class="header-right">
+            <div class="connection-dot online" id="commander-conn-dot" title="Connected"></div>
+            <button class="icon-btn" id="commander-btn-logout" title="Logout">
+                <i class="fa-solid fa-right-from-bracket"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="app-body" id="commander-body">
+
+        <!-- TAB: DASHBOARD -->
+        <section class="tab-screen active" id="commander-tab-dashboard">
+
+            <!-- Device Selector -->
+            <div class="device-selector-bar">
+                <i class="fa-solid fa-mobile-screen-button"></i>
+                <select id="device-selector">
+                    <option value="">— Select Tracked Device —</option>
+                </select>
+                <button class="icon-btn-sm" id="btn-add-device"><i class="fa-solid fa-plus"></i></button>
+            </div>
+
+            <!-- Map -->
+            <div class="map-container" id="commander-map">
+                <div class="map-placeholder" id="map-placeholder">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                    <p>Select a device to see live location</p>
+                </div>
+                <div id="map-inner" style="width:100%;height:100%;display:none;"></div>
+                <div class="map-overlay-info" id="map-overlay-info" style="display:none;">
+                    <div class="map-info-pill">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <span id="map-coords-text">--</span>
+                    </div>
+                    <div class="map-info-pill">
+                        <i class="fa-solid fa-clock"></i>
+                        <span id="map-time-text">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Device Status Bar -->
+            <div class="device-status-bar" id="device-status-bar" style="display:none;">
+                <div class="device-stat">
+                    <i class="fa-solid fa-battery-half"></i>
+                    <span id="cmd-battery">--</span>
+                </div>
+                <div class="device-stat">
+                    <i class="fa-solid fa-wifi"></i>
+                    <span id="cmd-network">--</span>
+                </div>
+                <div class="device-stat">
+                    <i class="fa-solid fa-clock"></i>
+                    <span id="cmd-last-seen">--</span>
+                </div>
+            </div>
+
+            <!-- STOLEN TOGGLE -->
+            <div class="stolen-toggle-card" id="stolen-toggle-card">
+                <div class="stolen-toggle-info">
+                    <h3 id="stolen-toggle-label">Device Status</h3>
+                    <p id="stolen-toggle-sub">Tap to mark this device as stolen</p>
+                </div>
+                <button class="stolen-toggle-btn" id="btn-mark-stolen">
+                    <span id="stolen-btn-text">MARK AS STOLEN</span>
+                </button>
+            </div>
+
+            <!-- Action Grid (only shows when stolen) -->
+            <div class="action-grid" id="action-grid" style="display:none;">
+                <div class="action-grid-title">
+                    <i class="fa-solid fa-triangle-exclamation" style="color:var(--danger)"></i>
+                    Active Countermeasures
+                </div>
+                <div class="action-tiles">
+                    <button class="action-tile" id="act-siren">
+                        <i class="fa-solid fa-bullhorn"></i>
+                        <span>Blast Siren</span>
+                        <small>Inactive</small>
+                    </button>
+                    <button class="action-tile" id="act-broken">
+                        <i class="fa-solid fa-mobile-screen"></i>
+                        <span>Broken Screen</span>
+                        <small>Inactive</small>
+                    </button>
+                    <button class="action-tile" id="act-locate">
+                        <i class="fa-solid fa-location-crosshairs"></i>
+                        <span>Force Locate</span>
+                        <small>Inactive</small>
+                    </button>
+                    <button class="action-tile danger-tile" id="act-wipe">
+                        <i class="fa-solid fa-trash-can"></i>
+                        <span>Remote Wipe</span>
+                        <small>IRREVERSIBLE</small>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB: EVIDENCE -->
+        <section class="tab-screen" id="commander-tab-evidence">
+
+            <!-- Header -->
+            <div class="evidence-vault-header">
+                <div>
+                    <h2>Evidence Vault</h2>
+                    <p id="evidence-summary-text">0 items collected</p>
+                </div>
+                <div class="evidence-header-actions">
+                    <span class="badge" id="evidence-count">0</span>
+                    <button class="icon-btn-sm" id="btn-export-evidence" title="Export Report">
+                        <i class="fa-solid fa-file-export"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Forensic Category Filters -->
+            <div class="evidence-filter-grid">
+                <button class="ev-filter active" data-filter="biometric">
+                    <i class="fa-solid fa-face-viewfinder"></i>
+                    <span>Biometric</span>
+                </button>
+                <button class="ev-filter" data-filter="location">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                    <span>Location</span>
+                </button>
+                <button class="ev-filter" data-filter="network">
+                    <i class="fa-solid fa-tower-broadcast"></i>
+                    <span>Network</span>
+                </button>
+                <button class="ev-filter" data-filter="audio">
+                    <i class="fa-solid fa-waveform-lines"></i>
+                    <span>Audio</span>
+                </button>
+                <button class="ev-filter" data-filter="device">
+                    <i class="fa-solid fa-microchip"></i>
+                    <span>Device</span>
+                </button>
+                <button class="ev-filter" data-filter="behavior">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <span>Behavior</span>
+                </button>
+            </div>
+
+            <!-- ── BIOMETRIC ────────────────────────────── -->
+            <div class="ev-panel active" id="ev-biometric">
+                <div class="ev-panel-info">
+                    <i class="fa-solid fa-face-viewfinder" style="color:var(--primary)"></i>
+                    <div>
+                        <strong>Facial & Biometric Captures</strong>
+                        <span>Front camera auto-fires on unlock attempts, wrong PIN entries, and motion trigger</span>
+                    </div>
+                </div>
+                <div class="evidence-grid" id="evidence-photos">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-camera-slash"></i>
+                        <p>No captures yet.<br>Photos fire automatically when stolen mode is active.</p>
+                    </div>
+                </div>
+                <button class="ev-capture-btn" id="btn-manual-capture">
+                    <i class="fa-solid fa-camera"></i> Manual Capture Now
+                </button>
+            </div>
+
+            <!-- ── LOCATION TRAIL ──────────────────────── -->
+            <div class="ev-panel" id="ev-location" style="display:none;">
+                <div class="ev-panel-info">
+                    <i class="fa-solid fa-map-location-dot" style="color:var(--green)"></i>
+                    <div>
+                        <strong>GPS Location Trail</strong>
+                        <span>Timestamped coordinates logged every 30 seconds. Build a movement timeline for police.</span>
+                    </div>
+                </div>
+                <div class="evidence-list" id="evidence-locations">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-location-slash"></i>
+                        <p>No location data yet.<br>Use Force Locate or enable background tracking.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── NETWORK INTELLIGENCE ───────────────── -->
+            <div class="ev-panel" id="ev-network" style="display:none;">
+                <div class="ev-panel-info">
+                    <i class="fa-solid fa-tower-broadcast" style="color:var(--cyan)"></i>
+                    <div>
+                        <strong>Network Intelligence</strong>
+                        <span>IP address, WiFi SSIDs connected, and ISP info. Traceable to a physical address by police.</span>
+                    </div>
+                </div>
+                <div class="evidence-list" id="evidence-network">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-wifi-slash"></i>
+                        <p>No network data yet.</p>
+                    </div>
+                </div>
+                <button class="ev-capture-btn" id="btn-capture-network">
+                    <i class="fa-solid fa-tower-broadcast"></i> Capture Network Info Now
+                </button>
+            </div>
+
+            <!-- ── AMBIENT AUDIO ───────────────────────── -->
+            <div class="ev-panel" id="ev-audio" style="display:none;">
+                <div class="ev-panel-info">
+                    <i class="fa-solid fa-waveform-lines" style="color:var(--yellow)"></i>
+                    <div>
+                        <strong>Ambient Audio Recordings</strong>
+                        <span>Captures surrounding sounds and voices. Voice prints can identify suspects.</span>
+                    </div>
+                </div>
+                <div class="evidence-list" id="evidence-audio">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-microphone-slash"></i>
+                        <p>No audio recordings yet.</p>
+                    </div>
+                </div>
+                <button class="ev-capture-btn" id="btn-capture-audio">
+                    <i class="fa-solid fa-microphone"></i> Start 30s Recording
+                </button>
+            </div>
+
+            <!-- ── DEVICE FORENSICS ───────────────────── -->
+            <div class="ev-panel" id="ev-device" style="display:none;">
+                <div class="ev-panel-info">
+                    <i class="fa-solid fa-microchip" style="color:var(--danger)"></i>
+                    <div>
+                        <strong>Device Forensics</strong>
+                        <span>IMEI, SIM card changes, battery level, and hardware fingerprint. Critical for police reports.</span>
+                    </div>
+                </div>
+                <div class="evidence-list" id="evidence-device">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-mobile-slash"></i>
+                        <p>Loading device data…</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── BEHAVIORAL PATTERNS ────────────────── -->
+            <div class="ev-panel" id="ev-behavior" style="display:none;">
+                <div class="ev-panel-info">
+                    <i class="fa-solid fa-chart-line" style="color:var(--primary)"></i>
+                    <div>
+                        <strong>Behavioral Patterns</strong>
+                        <span>App opens, unlock attempts, screen-on events, and motion patterns. Builds suspect activity profile.</span>
+                    </div>
+                </div>
+                <div class="evidence-list" id="evidence-behavior">
+                    <div class="empty-state">
+                        <i class="fa-solid fa-chart-line"></i>
+                        <p>No behavioral data yet.<br>Activity is logged automatically when stolen mode is active.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Police Report Generator -->
+            <div class="police-report-card">
+                <div class="police-report-left">
+                    <i class="fa-solid fa-file-shield" style="color:var(--primary)"></i>
+                    <div>
+                        <strong>Generate Police Report</strong>
+                        <span>Compile all evidence into a formatted PDF for law enforcement</span>
+                    </div>
+                </div>
+                <button class="perm-card-btn" id="btn-gen-report">Generate</button>
+            </div>
+
+
+            </div>
+
+            <div class="evidence-list" id="evidence-audio" style="display:none;">
+                <div class="empty-state">
+                    <i class="fa-solid fa-microphone-slash"></i>
+                    <p>No audio recordings yet.</p>
+                </div>
+            </div>
+
+            <div class="evidence-list" id="evidence-locations" style="display:none;">
+                <div class="empty-state">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                    <p>No location history yet.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB: SETTINGS -->
+        <section class="tab-screen" id="commander-tab-settings">
+            <h2 class="screen-title">Commander Settings</h2>
+
+            <!-- Managed Devices -->
+            <div class="settings-group">
+                <div class="settings-group-title">
+                    <i class="fa-solid fa-mobile-screen-button"></i> Linked Devices
+                </div>
+                <div class="field-group">
+                    <label>Add Device by ID</label>
+                    <div style="display:flex;gap:8px;">
+                        <input type="text" id="add-device-id" placeholder="e.g. A1B2C3" style="flex:1;">
+                        <button class="btn-secondary" id="btn-link-device" style="flex-shrink:0;">Link</button>
+                    </div>
+                </div>
+                <div class="linked-devices-list" id="linked-devices-list">
+                    <p class="helper-text">No devices linked yet. Install Vanguard on your phone, open it in Tracker Mode, and copy the Device ID.</p>
+                </div>
+            </div>
+
+            <!-- Alert Settings -->
+            <div class="settings-group">
+                <div class="settings-group-title">
+                    <i class="fa-solid fa-bell"></i> Alert Notifications
+                </div>
+                <div class="field-group">
+                    <label>Alert Email</label>
+                    <input type="email" id="alert-email" placeholder="your@email.com">
+                </div>
+                <button class="btn-secondary" id="btn-save-alert-email">
+                    <i class="fa-solid fa-floppy-disk"></i> Save
+                </button>
+            </div>
+
+            <!-- Account -->
+            <div class="settings-group">
+                <div class="settings-group-title">
+                    <i class="fa-solid fa-user"></i> Account
+                </div>
+                <div class="info-card">
+                    <div class="info-card-header"><i class="fa-solid fa-envelope"></i> Logged in as</div>
+                    <div class="info-card-body" id="commander-user-email">Demo Mode</div>
+                </div>
+                <button class="btn-outline" id="commander-btn-switch-mode">
+                    <i class="fa-solid fa-mobile-screen-button"></i> Switch to Tracker Mode
+                </button>
+                <button class="btn-danger-outline" id="commander-btn-logout2">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+        <button class="nav-btn active" data-tab="commander-tab-dashboard">
+            <i class="fa-solid fa-gauge-high"></i>
+            <span>Dashboard</span>
+        </button>
+        <button class="nav-btn" data-tab="commander-tab-evidence">
+            <i class="fa-solid fa-photo-film"></i>
+            <span>Evidence</span>
+        </button>
+        <button class="nav-btn" data-tab="commander-tab-settings">
+            <i class="fa-solid fa-gear"></i>
+            <span>Settings</span>
+        </button>
+    </nav>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  OVERLAYS                                               -->
+<!-- ═══════════════════════════════════════════════════════ -->
+
+<!-- Broken Screen Trap -->
+<div id="broken-screen-overlay" style="display:none; position:fixed; inset:0; z-index:99999; background: url('broken.png') center/cover no-repeat, #000; pointer-events:auto;"></div>
+
+<!-- Wipe Confirmation Modal -->
+<div id="wipe-confirm-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-box danger-modal">
+        <div class="modal-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <h3>Remote Wipe?</h3>
+        <p>This will erase ALL data on the tracked device. <strong>This cannot be undone.</strong></p>
+        <div class="modal-actions">
+            <button class="btn-outline" id="btn-wipe-cancel">Cancel</button>
+            <button class="btn-danger" id="btn-wipe-confirm">Yes, Wipe Device</button>
+        </div>
+    </div>
+</div>
+
+<!-- Add Device Modal -->
+<div id="add-device-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+        <h3>Link a Tracked Device</h3>
+        <p>Enter the Device ID shown in the Tracker app on the phone you want to protect.</p>
+        <div class="field-group">
+            <label>Device ID</label>
+            <input type="text" id="modal-device-id" placeholder="e.g. A1B2C3">
+        </div>
+        <div class="field-group">
+            <label>Device Name (optional)</label>
+            <input type="text" id="modal-device-name" placeholder="e.g. My Samsung">
+        </div>
+        <div class="modal-actions">
+            <button class="btn-outline" id="btn-modal-cancel">Cancel</button>
+            <button class="btn-primary" id="btn-modal-link">Link Device</button>
+        </div>
+    </div>
+</div>
+
+<!-- PIN Lock Keypad Modal -->
+<div id="pin-lock-modal" class="pin-modal-overlay" style="display:none;">
+    <div class="pin-pad-container" id="pin-pad-box">
+        <div class="pin-pad-header">
+            <div class="pin-lock-icon"><i class="fa-solid fa-lock"></i></div>
+            <h3 id="pin-pad-title">Enter PIN</h3>
+            <p id="pin-pad-subtitle">Authorize access to continue</p>
+        </div>
+        
+        <!-- PIN Dot Indicators -->
+        <div class="pin-dots">
+            <div class="pin-dot" id="pin-dot-1"></div>
+            <div class="pin-dot" id="pin-dot-2"></div>
+            <div class="pin-dot" id="pin-dot-3"></div>
+            <div class="pin-dot" id="pin-dot-4"></div>
+        </div>
+        
+        <div class="pin-error" id="pin-pad-error"></div>
+        
+        <!-- Virtual Keypad Grid -->
+        <div class="pin-keypad-grid">
+            <button class="pin-key" data-val="1">1</button>
+            <button class="pin-key" data-val="2">2</button>
+            <button class="pin-key" data-val="3">3</button>
+            
+            <button class="pin-key" data-val="4">4</button>
+            <button class="pin-key" data-val="5">5</button>
+            <button class="pin-key" data-val="6">6</button>
+            
+            <button class="pin-key" data-val="7">7</button>
+            <button class="pin-key" data-val="8">8</button>
+            <button class="pin-key" data-val="9">9</button>
+            
+            <button class="pin-key pin-cancel" id="btn-pin-cancel">Cancel</button>
+            <button class="pin-key" data-val="0">0</button>
+            <button class="pin-key pin-backspace" id="btn-pin-backspace">
+                <i class="fa-solid fa-delete-left"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Notification Stack -->
+<div id="notif-stack"></div>
+
+<!-- Hidden camera/canvas for evidence capture -->
+<video id="webcam-stream" autoplay playsinline muted style="display:none;"></video>
+<canvas id="photo-canvas" style="display:none;"></canvas>
+
+<!-- Firebase stub (no CDN needed — app has full demo fallback) -->
+<script src="firebase-config.js"></script>
+
+<!-- Mapbox GL JS -->
+<script src='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js'></script>
+
+<script src="app.js"></script>
+</body>
+</html>

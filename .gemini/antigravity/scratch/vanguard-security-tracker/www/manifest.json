@@ -1,0 +1,18 @@
+{
+  "name": "SAFETRACKER ANTI-THEFT",
+  "short_name": "SafeTracker",
+  "description": "Smart Anti-Theft & Lost Phone Locator System",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#090a0f",
+  "theme_color": "#090a0f",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,160 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #060913;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(139, 92, 246, 0.08) 0px, transparent 50%),
+      radial-gradient(at 50% 0%, rgba(59, 130, 246, 0.06) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(20, 184, 166, 0.08) 0px, transparent 50%);
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+  }
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(6, 9, 19, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.15);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.35);
+}
+
+/* Glassmorphism panel class */
+.glass-panel {
+  background: rgba(13, 18, 35, 0.7);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.glass-panel-glow {
+  background: rgba(13, 18, 35, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(139, 92, 246, 0.18);
+  box-shadow: 0 0 24px rgba(139, 92, 246, 0.06);
+}
+
+/* Keyframes for Base44-style animations */
+
+/* 1. Drift background blobs */
+@keyframes floatBlob {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.95);
+  }
+}
+
+/* 2. Text shimmer */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer-text {
+  background: linear-gradient(90deg, #8B5CF6 0%, #3B82F6 40%, #14B8A6 60%, #8B5CF6 100%);
+  background-size: 200% auto;
+  color: transparent;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: shimmer 5s linear infinite;
+}
+
+/* 3. Scale-bounce checkmarks */
+@keyframes scaleBounce {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.15); }
+  75% { transform: scale(0.95); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-checkmark {
+  animation: scaleBounce 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+/* 4. Slide up chat bubbles */
+@keyframes slideUp {
+  0% { transform: translateY(16px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s cubic-bezier(0.215, 0.61, 0.355, 1) forwards;
+}
+
+/* 5. Glow Pulse border */
+@keyframes borderPulse {
+  0%, 100% { border-color: rgba(139, 92, 246, 0.25); box-shadow: 0 0 8px rgba(139, 92, 246, 0.05); }
+  50% { border-color: rgba(139, 92, 246, 0.6); box-shadow: 0 0 16px rgba(139, 92, 246, 0.15); }
+}
+
+.animate-border-glow {
+  animation: borderPulse 2s infinite ease-in-out;
+}
+
+/* 6. Marching ants for inspected items */
+@keyframes marchingAnts {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: 16; }
+}
+
+.inspector-highlight {
+  outline: 2px dashed #8b5cf6 !important;
+  outline-offset: -2px !important;
+  background-color: rgba(139, 92, 246, 0.12) !important;
+  cursor: crosshair !important;
+}
+
+/* 7. Skeleton writing load */
+@keyframes skeletonShimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0.02) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.02) 75%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s infinite linear;
+}
+
+/* Device simulation frames styling */
+.device-mobile {
+  border: 10px solid #101524;
+  border-radius: 36px;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8);
+}
+
+.device-tablet {
+  border: 12px solid #101524;
+  border-radius: 24px;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8);
+}
+
+/* Sleek hover scaling cards */
+.card-hover-lift {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.card-hover-lift:hover {
+  transform: translateY(-4px) scale(1.01);
+  border-color: rgba(139, 92, 246, 0.25);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5), 0 0 15px rgba(139, 92, 246, 0.04);
+}
