@@ -1,0 +1,8 @@
+node_modules/
+android/
+dist/
+.git/
+ngrok.exe
+*.zip
+*.apk
+*.exe
