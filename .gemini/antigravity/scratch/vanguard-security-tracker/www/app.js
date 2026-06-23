@@ -180,40 +180,51 @@ function addTrackerEvent(text, type = '') {
 }
 
 // ─────────────────────────────────────────────────────
-// BACKEND-BACKED AUTHENTICATION (KV PROD)
+// CLIENT-SIDE AUTHENTICATION (localStorage + Web Crypto)
 // ─────────────────────────────────────────────────────
+async function hashPassword(password, salt) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(salt + password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function generateSalt() {
+    return Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 async function firebaseLogin(email, password) {
-    const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-    });
-    if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || 'Login failed.');
-    }
-    const data = await res.json();
-    return { user: { email: data.user.email, name: data.user.name, uid: data.user.uid } };
+    const emailClean = email.trim().toLowerCase();
+    const storedRaw = localStorage.getItem('vg_account_' + emailClean);
+    if (!storedRaw) throw new Error('No account found for this email. Please register first.');
+
+    let stored;
+    try { stored = JSON.parse(storedRaw); } catch (e) { throw new Error('Account data corrupted. Please re-register.'); }
+
+    const checkHash = await hashPassword(password, stored.salt);
+    if (checkHash !== stored.hash) throw new Error('Incorrect password. Please try again.');
+
+    return { user: { email: stored.email, name: stored.name, uid: emailClean } };
 }
 
 async function firebaseRegister(email, password) {
-    const name = $('reg-name') ? $('reg-name').value : email.split('@')[0];
-    const res = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password })
-    });
-    if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(errText || 'Registration failed.');
+    const emailClean = email.trim().toLowerCase();
+    const name = ($('reg-name') ? $('reg-name').value.trim() : '') || emailClean.split('@')[0];
+
+    if (localStorage.getItem('vg_account_' + emailClean)) {
+        throw new Error('An account already exists for this email. Please sign in.');
     }
-    const data = await res.json();
-    return { user: { email: data.user.email, name: data.user.name, uid: data.user.uid } };
+
+    const salt = generateSalt();
+    const hash = await hashPassword(password, salt);
+
+    const account = { email: emailClean, name, salt, hash, createdAt: new Date().toISOString() };
+    localStorage.setItem('vg_account_' + emailClean, JSON.stringify(account));
+
+    return { user: { email: emailClean, name, uid: emailClean } };
 }
 
 function firebaseLogout() {
-    // Clear session cookies
-    document.cookie = 'vg_email=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
     return Promise.resolve();
 }
 
@@ -302,8 +313,10 @@ function initAuth() {
     // Register
     $('btn-register').addEventListener('click', async () => {
         const btn = $('btn-register');
+        const name = $('reg-name') ? $('reg-name').value.trim() : '';
         const email = $('reg-email').value.trim();
         const pass = $('reg-password').value;
+        if (!name) { showAuthError('Please enter your full name.'); return; }
         if (!email || !pass) { showAuthError('Please fill in all fields.'); return; }
         if (pass.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
         
@@ -312,11 +325,24 @@ function initAuth() {
         btn.disabled = true;
         
         try {
-            const result = await firebaseRegister(email, pass);
-            State.user = { email: result.user.email, uid: result.user.uid };
-            save('vg_user', State.user);
+            await firebaseRegister(email, pass);
             $('auth-error').style.display = 'none';
-            route();
+
+            // Clear register fields
+            if ($('reg-name')) $('reg-name').value = '';
+            $('reg-email').value = '';
+            $('reg-password').value = '';
+
+            // Pre-fill login email
+            if ($('login-email')) $('login-email').value = email;
+
+            // Show success toast
+            notify('Account created! Please sign in with your credentials.', 'success', 5000, 'Registration Successful');
+
+            // Switch to Sign In tab
+            const loginTabBtn = document.querySelector('#auth-tab-toggle .tab-btn[data-tab="login"]');
+            if (loginTabBtn) loginTabBtn.click();
+
         } catch (e) {
             showAuthError(e.message || 'Registration failed.');
         } finally {
