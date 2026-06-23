@@ -2440,11 +2440,16 @@ async function syncStateLoop() {
             const syncId = State.deviceId;
             await fetch(`/api/sync?deviceId=${syncId}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-user-email': State.user.email
+                },
                 body: JSON.stringify(localData)
             });
 
-            const res = await fetch(`/api/sync?deviceId=${syncId}`);
+            const res = await fetch(`/api/sync?deviceId=${syncId}`, {
+                headers: { 'x-user-email': State.user.email }
+            });
             const remoteData = await res.json();
             
             handleRemoteData(remoteData);
@@ -2467,11 +2472,16 @@ async function syncStateLoop() {
 
             await fetch(`/api/sync?deviceId=${syncId}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-user-email': State.user.email
+                },
                 body: JSON.stringify(commanderCommands)
             });
 
-            const res = await fetch(`/api/sync?deviceId=${syncId}`);
+            const res = await fetch(`/api/sync?deviceId=${syncId}`, {
+                headers: { 'x-user-email': State.user.email }
+            });
             const remoteData = await res.json();
 
             handleRemoteData(remoteData);
