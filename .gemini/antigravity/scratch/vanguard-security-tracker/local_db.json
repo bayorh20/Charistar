@@ -1,0 +1,17 @@
+{
+  "users": {
+    "vanguard:user:test@vanguard.com": {
+      "name": "Test Owner",
+      "email": "test@vanguard.com",
+      "salt": "aa6732a81054f5656f2061d92d080559",
+      "hash": "6943a7645d0fb568c88e3b8ccc8a0d47ee7d037a603695b4acf2a1c0db2ae5872529ef68eb327345656f3d537b98c804b8beb71dc001d74622e0927d09834bd0",
+      "createdAt": "2026-06-23T03:25:20.055Z"
+    }
+  },
+  "states": {
+    "vanguard:state:device:DEVICE123": {
+      "vg_last_location": "{\"lat\":6.5244,\"lng\":3.3792}",
+      "vg_battery_level": "85"
+    }
+  }
+}

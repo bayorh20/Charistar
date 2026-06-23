@@ -574,6 +574,35 @@
                 </div>
             </div>
 
+            <!-- Device Info & Hardware Card -->
+            <div class="glass-card" id="cmd-device-details-card" style="display:none; padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; margin-top: 8px;">
+                <div class="info-card-header" style="display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--text2); text-transform: uppercase; letter-spacing: 1px;">
+                    <i class="fa-solid fa-microchip" style="color:var(--primary)"></i> Device Specifications & Info
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 0.82rem;">
+                    <div>
+                        <span style="color: var(--text3); display: block; font-size: 0.75rem; text-transform: uppercase;">Platform</span>
+                        <strong id="cmd-device-platform" style="color: var(--text);">--</strong>
+                    </div>
+                    <div>
+                        <span style="color: var(--text3); display: block; font-size: 0.75rem; text-transform: uppercase;">CPU Cores</span>
+                        <strong id="cmd-device-cores" style="color: var(--text);">--</strong>
+                    </div>
+                    <div>
+                        <span style="color: var(--text3); display: block; font-size: 0.75rem; text-transform: uppercase;">RAM</span>
+                        <strong id="cmd-device-ram" style="color: var(--text);">--</strong>
+                    </div>
+                    <div>
+                        <span style="color: var(--text3); display: block; font-size: 0.75rem; text-transform: uppercase;">Resolution</span>
+                        <strong id="cmd-device-screen" style="color: var(--text);">--</strong>
+                    </div>
+                </div>
+                <div style="border-top: 1px solid var(--border); padding-top: 8px; font-size: 0.8rem; color: var(--text2); display: flex; flex-direction: column; gap: 4px;">
+                    <div><span style="color: var(--text3);">User Agent:</span> <span id="cmd-device-ua" style="font-family: monospace; font-size: 0.72rem; word-break: break-all;">--</span></div>
+                    <div><span style="color: var(--text3);">Security Context:</span> <span id="cmd-device-security" style="color: var(--green);">--</span></div>
+                </div>
+            </div>
+
             <!-- STOLEN TOGGLE -->
             <div class="stolen-toggle-card" id="stolen-toggle-card">
                 <div class="stolen-toggle-info">

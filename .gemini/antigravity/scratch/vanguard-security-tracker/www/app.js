@@ -1308,6 +1308,8 @@ function initCommander() {
                 $('map-inner').style.display = 'none';
                 $('map-overlay-info').style.display = 'none';
                 $('device-status-bar').style.display = 'none';
+                const detailsCard = $('cmd-device-details-card');
+                if (detailsCard) detailsCard.style.display = 'none';
             }
         });
     }
@@ -2650,6 +2652,42 @@ function handleRemoteData(remoteData) {
                     if (parsed) {
                         Object.assign(EvidenceStore, parsed);
                         renderEvidenceVault();
+
+                        // Populate Commander Center Device specs card
+                        const deviceEvidence = EvidenceStore.device || [];
+                        if (deviceEvidence.length > 0) {
+                            const detailsCard = $('cmd-device-details-card');
+                            if (detailsCard) detailsCard.style.display = 'flex';
+
+                            // Parse information from device evidence items
+                            deviceEvidence.forEach(item => {
+                                const detailText = item.detail || '';
+                                if (item.title && item.title.includes('Hardware Fingerprint')) {
+                                    const platMatch = detailText.match(/Platform:\s*([^\n]+)/);
+                                    const coresMatch = detailText.match(/CPU Cores:\s*([^\n]+)/);
+                                    const ramMatch = detailText.match(/RAM:\s*([^\n]+)/);
+                                    const screenMatch = detailText.match(/Screen:\s*([^\n]+)/);
+
+                                    if (platMatch && $('cmd-device-platform')) $('cmd-device-platform').textContent = platMatch[1];
+                                    if (coresMatch && $('cmd-device-cores')) $('cmd-device-cores').textContent = coresMatch[1];
+                                    if (ramMatch && $('cmd-device-ram')) $('cmd-device-ram').textContent = ramMatch[1];
+                                    if (screenMatch && $('cmd-device-screen')) $('cmd-device-screen').textContent = screenMatch[1];
+                                } else if (item.title && item.title.includes('Connection State')) {
+                                    const uaMatch = detailText.match(/User Agent:\s*([^\n]+)/);
+                                    if (uaMatch && $('cmd-device-ua')) $('cmd-device-ua').textContent = uaMatch[1];
+                                } else if (item.title && item.title.includes('Security Context')) {
+                                    const secMatch = detailText.match(/HTTPS:\s*([^\n]+)/);
+                                    if (secMatch && $('cmd-device-security')) {
+                                        $('cmd-device-security').textContent = secMatch[1];
+                                        if (secMatch[1].includes('Secure')) {
+                                            $('cmd-device-security').style.color = 'var(--green)';
+                                        } else {
+                                            $('cmd-device-security').style.color = 'var(--danger)';
+                                        }
+                                    }
+                                }
+                            });
+                        }
                     }
                 } catch(e) {}
             }
