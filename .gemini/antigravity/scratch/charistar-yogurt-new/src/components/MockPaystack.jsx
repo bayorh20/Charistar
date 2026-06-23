@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CreditCard, X, ShieldCheck, CheckCircle, Loader2 } from 'lucide-react';
+import { CreditCard, X, ShieldCheck, CheckCircle, Loader2, Lock, ArrowRight } from 'lucide-react';
 
 export default function MockPaystack({ amount, email, onSuccess, onCancel }) {
   const [cardNumber, setCardNumber] = useState('');
@@ -8,6 +8,7 @@ export default function MockPaystack({ amount, email, onSuccess, onCancel }) {
   const [cvv, setCvv] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [cardFocused, setCardFocused] = useState(false);
 
   // Format card number with spaces
   const handleCardChange = (e) => {
@@ -34,7 +35,6 @@ export default function MockPaystack({ amount, email, onSuccess, onCancel }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (cardNumber.length < 19 || expiry.length < 5 || cvv.length < 3) {
-      alert("Please enter valid card details to simulate payment.");
       return;
     }
     
@@ -51,122 +51,162 @@ export default function MockPaystack({ amount, email, onSuccess, onCancel }) {
           reference: 'mock_pay_' + Math.floor((Math.random() * 1000000000) + 1),
           status: 'success'
         });
-      }, 1000);
+      }, 1200);
       
     }, 2000);
   };
 
+  const getCardType = (number) => {
+    const trimmed = number.replace(/\s+/g, '');
+    if (/^4/.test(trimmed)) return 'visa';
+    if (/^(5[1-5]|2[2-7])/.test(trimmed)) return 'mastercard';
+    return 'generic';
+  };
+
+  const cardType = getCardType(cardNumber);
+
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={(!isProcessing && !isSuccess) ? onCancel : undefined}
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          className="absolute inset-0 bg-[#000000]/80 backdrop-blur-[8px]"
         />
 
         {/* Modal */}
         <motion.div
-          initial={{ opacity: 0, y: 100, scale: 0.95 }}
+          initial={{ opacity: 0, y: 50, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 100, scale: 0.95 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="relative w-full max-w-[400px] glass-panel rounded-3xl overflow-hidden shadow-xl border border-white/10 flex flex-col bg-charistar-dark/95"
+          exit={{ opacity: 0, y: 50, scale: 0.95 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+          className="relative w-full max-w-[420px] glass-panel rounded-[2.5rem] overflow-hidden shadow-[0_25px_60px_rgba(0,0,0,0.85)] border border-white/10 flex flex-col bg-[#080808]/95 text-white"
         >
+          {/* Top Paystack Brand line Accent */}
+          <div className="absolute top-0 left-0 w-full h-[4px] bg-gradient-to-r from-emerald-500 via-[#3bb75e] to-teal-400"></div>
+
           {/* Header */}
-          <div className="flex justify-between items-center p-5 border-b border-white/5 bg-black/20">
+          <div className="flex justify-between items-center p-6 border-b border-white/5 bg-white/2">
             <div className="flex items-center gap-2">
-              <ShieldCheck size={20} className="text-[#0aba5b]" />
-              <span className="font-extrabold text-white uppercase tracking-wider text-sm">Secure Checkout</span>
+              <div className="w-8 h-8 rounded-lg bg-[#3bb75e]/10 border border-[#3bb75e]/25 flex items-center justify-center text-[#3bb75e]">
+                <ShieldCheck size={18} strokeWidth={2.5} />
+              </div>
+              <div className="text-left">
+                <span className="font-black text-white uppercase tracking-wider text-xs block">Paystack Secure Checkout</span>
+                <span className="text-[8px] text-[#3bb75e] font-black uppercase tracking-widest block">✦ 256-bit SSL Protected</span>
+              </div>
             </div>
             {(!isProcessing && !isSuccess) && (
-              <button onClick={onCancel} className="text-gray-400 hover:text-white transition-colors">
-                <X size={20} />
+              <button onClick={onCancel} className="w-8 h-8 rounded-full bg-white/5 border border-white/5 hover:bg-white/10 hover:text-white transition-all flex items-center justify-center text-gray-400">
+                <X size={16} />
               </button>
             )}
           </div>
 
-          <div className="p-6">
+          <div className="p-7">
             <div className="text-center mb-6">
-              <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">{email}</p>
-              <h2 className="text-3xl font-black text-white">₦{amount.toLocaleString()}</h2>
+              <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.15em] mb-1">{email}</p>
+              <div className="flex items-center justify-center gap-1.5">
+                <span className="text-gray-400 font-extrabold text-lg select-none">₦</span>
+                <h2 className="text-4xl font-black text-white tracking-tight leading-none">{amount.toLocaleString()}</h2>
+              </div>
             </div>
 
             {isSuccess ? (
               <motion.div 
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="flex flex-col items-center justify-center py-8 space-y-4"
+                className="flex flex-col items-center justify-center py-10 space-y-4"
               >
-                <div className="w-20 h-20 bg-[#0aba5b]/20 rounded-full flex items-center justify-center border-2 border-[#0aba5b]/40 shadow-[0_0_30px_rgba(10,186,91,0.3)]">
-                  <CheckCircle size={40} className="text-[#0aba5b]" />
+                <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center border-2 border-emerald-500/30 shadow-[0_0_35px_rgba(16,185,129,0.35)]">
+                  <CheckCircle size={36} className="text-[#3bb75e]" />
                 </div>
-                <p className="text-white font-extrabold text-lg uppercase tracking-wide">Payment Successful</p>
+                <div className="text-center space-y-1">
+                  <p className="text-white font-black text-lg uppercase tracking-wide">Payment Authorized</p>
+                  <p className="text-gray-500 text-[9px] uppercase font-black tracking-widest">Generating secure receipt id...</p>
+                </div>
               </motion.div>
             ) : isProcessing ? (
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="flex flex-col items-center justify-center py-12 space-y-4"
+                className="flex flex-col items-center justify-center py-14 space-y-4"
               >
-                <Loader2 size={48} className="text-[#0aba5b] animate-spin" />
-                <p className="text-gray-400 font-bold text-sm animate-pulse">Authenticating with Bank...</p>
+                <Loader2 size={42} className="text-[#3bb75e] animate-spin" strokeWidth={3} />
+                <div className="text-center space-y-1">
+                  <p className="text-gray-400 font-bold text-xs animate-pulse">Contacting card issuing bank...</p>
+                  <p className="text-gray-500 text-[9px] uppercase font-black tracking-widest">Do not close this gateway</p>
+                </div>
               </motion.div>
             ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Credit Card Graphic */}
-                <div className="w-full h-40 bg-gradient-to-br from-gray-800 to-black rounded-2xl p-5 flex flex-col justify-between border border-white/10 shadow-lg relative overflow-hidden group">
-                  <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/5 rounded-full blur-2xl group-hover:bg-[#0aba5b]/10 transition-colors"></div>
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {/* Credit Card Graphic mockup design */}
+                <div className="w-full h-44 bg-gradient-to-br from-[#121212] via-[#0c0c0c] to-[#050505] rounded-[1.8rem] p-5.5 flex flex-col justify-between border border-white/8 shadow-2xl relative overflow-hidden group">
+                  <div className="absolute -right-8 -top-8 w-28 h-28 bg-[#3bb75e]/5 rounded-full blur-2xl group-hover:bg-[#3bb75e]/10 transition-colors"></div>
+                  
                   <div className="flex justify-between items-start">
-                    <CreditCard size={24} className="text-gray-400" />
-                    <div className="flex gap-1">
-                      <div className="w-6 h-6 rounded-full bg-red-500/80 mix-blend-screen"></div>
-                      <div className="w-6 h-6 rounded-full bg-yellow-500/80 -ml-3 mix-blend-screen"></div>
+                    <div className="w-10 h-7 bg-amber-400/20 rounded border border-amber-400/30 flex items-center justify-center relative overflow-hidden">
+                      <div className="absolute inset-x-1 inset-y-1 border border-amber-400/25 opacity-30 rounded-sm"></div>
+                      <div className="absolute inset-x-3 inset-y-2 bg-amber-400/20"></div>
+                    </div>
+                    <div className="flex gap-1.5 items-center">
+                      {cardType === 'visa' && <span className="text-white font-black text-xs italic tracking-wider">VISA</span>}
+                      {cardType === 'mastercard' && (
+                        <div className="flex">
+                          <div className="w-6 h-6 rounded-full bg-red-500/80 mix-blend-screen"></div>
+                          <div className="w-6 h-6 rounded-full bg-yellow-500/80 -ml-2.5 mix-blend-screen"></div>
+                        </div>
+                      )}
+                      {cardType === 'generic' && <CreditCard size={18} className="text-gray-500" />}
                     </div>
                   </div>
+
                   <div>
-                    <p className="text-white/80 font-mono text-lg tracking-widest mb-1">{cardNumber || '•••• •••• •••• ••••'}</p>
-                    <div className="flex justify-between text-[10px] text-gray-500 font-bold uppercase tracking-widest">
-                      <span>Mock Card</span>
+                    <p className="text-white font-mono text-base tracking-[0.18em] font-semibold mb-1">
+                      {cardNumber || '•••• •••• •••• ••••'}
+                    </p>
+                    <div className="flex justify-between text-[8px] text-gray-500 font-black uppercase tracking-[0.2em] pt-0.5">
+                      <span>Cardholder Name</span>
                       <span>{expiry || 'MM/YY'}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-3 pt-2">
-                  <div className="glass-panel border border-white/10 rounded-xl px-4 py-1.5 focus-within:border-[#0aba5b] transition-colors">
-                    <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Card Number</label>
+                <div className="space-y-4 pt-1">
+                  <div className="glass-panel border border-white/5 bg-black/45 rounded-2xl px-5 py-2.5 focus-within:border-[#3bb75e]/40 transition-colors">
+                    <label className="block text-[8px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Card Number</label>
                     <input 
                       type="text" 
                       placeholder="0000 0000 0000 0000" 
                       value={cardNumber}
                       onChange={handleCardChange}
-                      className="w-full bg-transparent border-none outline-none text-white font-bold text-sm py-1 font-mono placeholder:text-gray-600"
+                      className="w-full bg-transparent border-none outline-none text-white font-extrabold text-xs py-0.5 font-mono placeholder:text-gray-600 focus:ring-0"
                     />
                   </div>
 
-                  <div className="flex gap-3">
-                    <div className="flex-1 glass-panel border border-white/10 rounded-xl px-4 py-1.5 focus-within:border-[#0aba5b] transition-colors">
-                      <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">Expiry</label>
+                  <div className="flex gap-4">
+                    <div className="flex-1 glass-panel border border-white/5 bg-black/45 rounded-2xl px-5 py-2.5 focus-within:border-[#3bb75e]/40 transition-colors">
+                      <label className="block text-[8px] font-black text-gray-500 uppercase tracking-widest mb-0.5">Expiry Date</label>
                       <input 
                         type="text" 
                         placeholder="MM/YY" 
                         value={expiry}
                         onChange={handleExpiryChange}
-                        className="w-full bg-transparent border-none outline-none text-white font-bold text-sm py-1 font-mono placeholder:text-gray-600"
+                        className="w-full bg-transparent border-none outline-none text-white font-extrabold text-xs py-0.5 font-mono placeholder:text-gray-600 focus:ring-0"
                       />
                     </div>
-                    <div className="flex-1 glass-panel border border-white/10 rounded-xl px-4 py-1.5 focus-within:border-[#0aba5b] transition-colors">
-                      <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest">CVV</label>
+                    <div className="flex-1 glass-panel border border-white/5 bg-black/45 rounded-2xl px-5 py-2.5 focus-within:border-[#3bb75e]/40 transition-colors">
+                      <label className="block text-[8px] font-black text-gray-500 uppercase tracking-widest mb-0.5">CVV Code</label>
                       <input 
                         type="password" 
+                        maxLength={3}
                         placeholder="123" 
                         value={cvv}
                         onChange={handleCvvChange}
-                        className="w-full bg-transparent border-none outline-none text-white font-bold text-sm py-1 font-mono placeholder:text-gray-600"
+                        className="w-full bg-transparent border-none outline-none text-white font-extrabold text-xs py-0.5 font-mono placeholder:text-gray-600 focus:ring-0"
                       />
                     </div>
                   </div>
@@ -174,12 +214,15 @@ export default function MockPaystack({ amount, email, onSuccess, onCancel }) {
 
                 <button 
                   type="submit"
-                  className="w-full bg-[#0aba5b] text-white font-extrabold text-[15px] uppercase tracking-wider py-3.5 rounded-xl mt-4 shadow-[0_5px_15px_rgba(10,186,91,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  disabled={cardNumber.length < 19 || expiry.length < 5 || cvv.length < 3}
+                  className="w-full h-13 bg-[#3bb75e] text-white font-black uppercase text-xs tracking-widest rounded-2xl mt-4 shadow-[0_8px_25px_rgba(59,183,94,0.25)] hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-40 flex items-center justify-center gap-2"
                 >
-                  Pay ₦{amount.toLocaleString()}
+                  Confirm Payment <ArrowRight size={14} strokeWidth={2.5} />
                 </button>
-                <div className="text-center mt-3">
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">⚡ Secured by MockPaystack</p>
+                
+                <div className="text-center flex items-center justify-center gap-1.5 opacity-40">
+                  <Lock size={10} />
+                  <span className="text-[8px] text-gray-400 font-black uppercase tracking-widest">Secured payment powered by paystack</span>
                 </div>
               </form>
             )}
@@ -189,3 +232,4 @@ export default function MockPaystack({ amount, email, onSuccess, onCancel }) {
     </AnimatePresence>
   );
 }
+

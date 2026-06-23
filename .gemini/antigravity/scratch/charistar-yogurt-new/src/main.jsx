@@ -29,6 +29,20 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   });
 }
 
+// Programmatically clean up active service workers in development mode to prevent PWA caching issues
+if (import.meta.env.DEV && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const registration of registrations) {
+      registration.unregister().then((success) => {
+        if (success) {
+          console.log('[Dev SW Cleanup] Unregistered service worker:', registration.active?.scriptURL);
+          window.location.reload();
+        }
+      });
+    }
+  });
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <Sentry.ErrorBoundary

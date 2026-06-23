@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import fs from 'fs'
 
+import viteCompression from 'vite-plugin-compression'
+
 const generateMetaPlugin = () => {
   return {
     name: 'generate-meta',
@@ -19,9 +21,11 @@ export default defineConfig({
   plugins: [
     generateMetaPlugin(),
     react(),
+    // viteCompression({ algorithm: 'brotliCompress', ext: '.br' }),
+    // viteCompression({ algorithm: 'gzip', ext: '.gz' }),
     VitePWA({
-      // Auto-update: new SW activates immediately without waiting
-      registerType: 'autoUpdate',
+      // Auto-update UI flow: wait for AutoUpdater to clear cache then reload
+      registerType: 'prompt',
       injectRegister: 'auto',
       workbox: {
         // Take control of all clients immediately on activation
@@ -95,5 +99,8 @@ export default defineConfig({
     chunkSizeWarningLimit: 1200,
     minify: 'esbuild',
     cssCodeSplit: true,
+  },
+  esbuild: {
+    drop: ['console', 'debugger'],
   }
 })

@@ -42,10 +42,14 @@ export default function MarketingPopup() {
       } else {
         setIsVisible(false);
       }
+    }, (err) => {
+      // Silently ignore — campaigns collection may not exist or be restricted
+      console.debug('[MarketingPopup] Campaign listener inactive:', err.code);
     });
 
     return () => unsubscribe();
   }, []);
+
 
   const handleDismiss = () => {
     setIsVisible(false);

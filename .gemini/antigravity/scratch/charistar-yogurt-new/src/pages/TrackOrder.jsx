@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
+import { STATUS_NOTIFICATIONS } from '../data/statusNotifications';
 
 export default function TrackOrder() {
   const { orderId } = useParams();
@@ -132,13 +133,14 @@ export default function TrackOrder() {
 
   // Realistic movement simulation: smoothly increases progress over time during 'dispatched' status
   useEffect(() => {
-    if (activeStatus === 'pending') {
+    const statusLower = (activeStatus || 'pending').toLowerCase();
+    if (statusLower === 'pending' || statusLower === 'confirmed') {
       setProgress(0);
-    } else if (activeStatus === 'processing') {
+    } else if (statusLower === 'processing' || statusLower === 'preparing') {
       setProgress(15);
-    } else if (activeStatus === 'delivered') {
+    } else if (statusLower === 'delivered') {
       setProgress(100);
-    } else if (activeStatus === 'dispatched') {
+    } else if (statusLower === 'dispatched') {
       // Start at 20% and slowly move up to 96%
       setProgress(20);
       const interval = setInterval(() => {
@@ -187,20 +189,8 @@ export default function TrackOrder() {
       const diff = layoutHeight - vvHeight;
       if (diff > 60) {
         setKeyboardHeight(diff);
-        // Force scroll reset only when keyboard is open/focused
-        window.scrollTo(0, 0);
-        document.body.scrollTop = 0;
-        document.documentElement.scrollTop = 0;
       } else {
-        // Only reset scroll if the keyboard was previously open and is now closing
-        setKeyboardHeight(prev => {
-          if (prev > 0) {
-            window.scrollTo(0, 0);
-            document.body.scrollTop = 0;
-            document.documentElement.scrollTop = 0;
-          }
-          return 0;
-        });
+        setKeyboardHeight(0);
       }
     };
 
@@ -349,118 +339,6 @@ export default function TrackOrder() {
     triggerChatLifecycle(suggestText);
   };
 
-  const steps = [
-    { title: 'Order Confirmed', status: 'pending', desc: 'Received at Kitchen' },
-    { title: 'Preparing Order', status: 'processing', desc: 'Kitchen is preparing your meal' },
-    { title: 'Out for Delivery', status: 'dispatched', desc: 'Courier is on the way' },
-    { title: 'Delivered', status: 'delivered', desc: 'Arrived at your location' }
-  ];
-
-  const getStepState = (statusKey, idx) => {
-    const statusIndices = { pending: 0, processing: 1, dispatched: 2, delivered: 3 };
-    const currentIndex = statusIndices[activeStatus];
-    if (idx < currentIndex) return 'completed';
-    if (idx === currentIndex) return 'active';
-    return 'pending';
-  };
-
-  // Calculate coordinates along a smooth curved Bezier path
-  // P0 = (30, 130)  - Store (Ibadan Kitchen)
-  // P1 = (110, 130) - First control/handle point
-  // P2 = (170, 50)  - Intermediate curve control point
-  // P3 = (230, 50)  - Intermediate curve control point
-  // P4 = (310, 110) - Customer delivery address
-  // We approximate the bezier curve with small segments for precise tracking
-  const getCoordinatesAt = (percent) => {
-    const t = percent / 100;
-    
-    // Cubic Bezier helper function
-    const getBezierPoint = (p0, p1, p2, p3, tVal) => {
-      const cx = 3 * (p1.x - p0.x);
-      const bx = 3 * (p2.x - p1.x) - cx;
-      const ax = p3.x - p0.x - cx - bx;
-
-      const cy = 3 * (p1.y - p0.y);
-      const by = 3 * (p2.y - p1.y) - cy;
-      const ay = p3.y - p0.y - cy - by;
-
-      const x = ax * Math.pow(tVal, 3) + bx * Math.pow(tVal, 2) + cx * tVal + p0.x;
-      const y = ay * Math.pow(tVal, 3) + by * Math.pow(tVal, 2) + cy * tVal + p0.y;
-      return { x, y };
-    };
-
-    // Define the segments of bezier curves
-    // Segment 1 (Curve from Store to Bridge/Midpoint)
-    // M 30, 130 -> C 110, 130, 150, 70, 180, 70
-    // Segment 2 (Curve from Midpoint to Customer)
-    // C 210, 70, 250, 110, 310, 110
-    const p0 = { x: 30, y: 130 };
-    const p1 = { x: 110, y: 130 };
-    const p2 = { x: 150, y: 70 };
-    const p3 = { x: 180, y: 70 };
-
-    const q0 = { x: 180, y: 70 };
-    const q1 = { x: 210, y: 70 };
-    const q2 = { x: 250, y: 110 };
-    const q3 = { x: 310, y: 110 };
-
-    let x, y, dx, dy;
-
-    if (t <= 0.5) {
-      const localT = t * 2;
-      const pt = getBezierPoint(p0, p1, p2, p3, localT);
-      x = pt.x;
-      y = pt.y;
-
-      // Small delta to compute tangent angle
-      const ptNext = getBezierPoint(p0, p1, p2, p3, Math.min(1.0, localT + 0.01));
-      dx = ptNext.x - x;
-      dy = ptNext.y - y;
-    } else {
-      const localT = (t - 0.5) * 2;
-      const pt = getBezierPoint(q0, q1, q2, q3, localT);
-      x = pt.x;
-      y = pt.y;
-
-      // Small delta to compute tangent angle
-      const ptNext = getBezierPoint(q0, q1, q2, q3, Math.min(1.0, localT + 0.01));
-      dx = ptNext.x - x;
-      dy = ptNext.y - y;
-    }
-
-    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-    return { x, y, angle };
-  };
-
-  const { x: riderX, y: riderY, angle: riderAngle } = getCoordinatesAt(progress);
-
-  const getDestinationArea = () => {
-    const address = order?.customerDetails?.address || order?.address || '';
-    if (!address) return 'Samonda, Ibadan';
-    
-    const ibadanAreas = [
-      'Samonda', 'Akobo', 'Challenge', 'Ring Road', 'Iwo Road', 
-      'Jericho', 'Oluyole', 'Apata', 'Moniya', 'Agodi', 'UI', 'University of Ibadan',
-      'Dugbe', 'Mokola', 'Orogun', 'Ojoo', 'Alakia'
-    ];
-    
-    for (const area of ibadanAreas) {
-      if (address.toLowerCase().includes(area.toLowerCase())) {
-        return `${area}, Ibadan`;
-      }
-    }
-    
-    if (address.toLowerCase().includes('lagos') || address.toLowerCase().includes('lekki') || address.toLowerCase().includes('island')) {
-      return 'Samonda, Ibadan';
-    }
-    
-    const parts = address.split(',');
-    if (parts.length > 1) {
-      return `${parts[parts.length - 2].trim()}, Ibadan`;
-    }
-    
-    return 'Samonda, Ibadan';
-  };
 
   return (
     <motion.div 
@@ -472,13 +350,7 @@ export default function TrackOrder() {
       }`}
     >
       <style>{`
-        @keyframes rider-vibrate {
-          0%, 100% { transform: translateY(0) rotate(0deg); }
-          50% { transform: translateY(-1.5px) rotate(1deg); }
-        }
-        .vibrating-bike {
-          animation: rider-vibrate 0.15s ease-in-out infinite;
-        }
+
         @keyframes typing-bounce {
           0%, 100% { transform: translateY(0); opacity: 0.4; }
           50% { transform: translateY(-3px); opacity: 1; }
@@ -590,162 +462,65 @@ export default function TrackOrder() {
           </div>
         </div>
 
-        {/* ANIMATED MINIMALIST SVG ROUTE MAP */}
-        <div className="p-5 rounded-2xl border border-white/5 bg-white/[0.02] relative overflow-hidden">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Transit Map</span>
-            {activeStatus === 'dispatched' && (
-              <span className="text-[9px] text-[#A3C644] font-bold uppercase tracking-wider flex items-center gap-1">
-                <span className="w-1.5 h-1.5 bg-[#A3C644] rounded-full animate-ping"></span> Live
-              </span>
-            )}
+        {/* LINEAR PROGRESS TRACKER */}
+        <div className="p-6 rounded-2xl border border-white/5 bg-white/[0.02] space-y-5">
+          <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-gray-500">
+            <span>Delivery Progress</span>
+            <span className="text-[#A3C644] px-2.5 py-1 rounded bg-[#A3C644]/10 border border-[#A3C644]/20">{activeStatus}</span>
           </div>
 
-          <div className="relative w-full h-[180px] bg-[#0c0c0e] rounded-2xl border border-white/5 overflow-hidden shadow-inner">
-            <svg className="w-full h-full overflow-visible" viewBox="0 0 340 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-              {/* STYLIZED GRID PATTERN (Streets background) */}
-              <defs>
-                <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
-                  <path d="M 30 0 L 0 0 0 30" fill="none" stroke="rgba(255, 255, 255, 0.02)" strokeWidth="1" />
-                </pattern>
-                <linearGradient id="routeGlow" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#A3C644" stopOpacity="0.9" />
-                  <stop offset="100%" stopColor="#22c55e" stopOpacity="0.9" />
-                </linearGradient>
-              </defs>
-              <rect width="100%" height="100%" fill="url(#grid)" />
-
-              {/* WATERWAY (Dandola River Representation) */}
-              <path 
-                d="M 190 0 L 150 180 H 220 L 260 0 Z" 
-                fill="rgba(59, 130, 246, 0.12)" 
-                stroke="rgba(59, 130, 246, 0.2)" 
-                strokeWidth="1"
+          <div className="relative pt-4 pb-2">
+            {/* The Track Line */}
+            <div className="absolute top-1/2 left-0 right-0 h-[3px] bg-white/5 -translate-y-1/2 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-[#A3C644] transition-all duration-700 ease-out" 
+                style={{ width: `${
+                  (activeStatus || 'pending').toLowerCase() === 'delivered' ? 100 :
+                  (activeStatus || 'pending').toLowerCase() === 'dispatched' ? 66 :
+                  ((activeStatus || 'pending').toLowerCase() === 'preparing' || (activeStatus || 'pending').toLowerCase() === 'processing') ? 33 : 0
+                }%` }}
               />
-
-              {/* PARKS / GREEN AREAS */}
-              <rect x="20" y="15" width="60" height="35" rx="8" fill="rgba(16, 185, 129, 0.07)" stroke="rgba(16, 185, 129, 0.15)" strokeWidth="1" />
-
-              <rect x="250" y="120" width="70" height="40" rx="8" fill="rgba(16, 185, 129, 0.07)" stroke="rgba(16, 185, 129, 0.15)" strokeWidth="1" />
-
-              {/* BACKGROUND DECORATIVE ROADS (Fake street grid) */}
-              <path d="M 0 130 H 340" stroke="rgba(255, 255, 255, 0.03)" strokeWidth="4" />
-              <path d="M 110 0 V 180" stroke="rgba(255, 255, 255, 0.03)" strokeWidth="4" />
-              <path d="M 230 0 V 180" stroke="rgba(255, 255, 255, 0.03)" strokeWidth="4" />
-              <path d="M 310 0 V 180" stroke="rgba(255, 255, 255, 0.03)" strokeWidth="4" />
-
-              {/* ACTUAL ACTIVE TRANSIT ROAD OUTLINE */}
-              <path 
-                d="M 30,130 C 110,130 150,70 180,70 C 210,70 250,110 310,110" 
-                stroke="rgba(255, 255, 255, 0.07)" 
-                strokeWidth="6" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-              />
-              <path 
-                d="M 30,130 C 110,130 150,70 180,70 C 210,70 250,110 310,110" 
-                stroke="#1e293b" 
-                strokeWidth="4" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-              />
-
-              {/* COMPLETED ROUTE ACTIVE HIGHLIGHT */}
-              <path 
-                d="M 30,130 C 110,130 150,70 180,70 C 210,70 250,110 310,110" 
-                stroke="url(#routeGlow)" 
-                strokeWidth="3.5" 
-                strokeLinecap="round" 
-                strokeLinejoin="round"
-                strokeDasharray="450"
-                strokeDashoffset={450 - (450 * progress) / 100}
-                className="transition-all duration-300 ease-out"
-              />
-
-              {/* LANDMARKS / NODES */}
-              {/* Start Store Node (Lagos Kitchen) */}
-              <g transform="translate(30, 130)">
-                <circle r="9" fill="#0c0c0e" stroke="#A3C644" strokeWidth="2.5" className="shadow-md" />
-                <circle r="4" fill="#A3C644" />
-              </g>
-
-              {/* Destination Residence Node */}
-              <g transform="translate(310, 110)">
-                <circle r="9" fill="#0c0c0e" stroke={activeStatus === 'delivered' ? '#A3C644' : 'rgba(255,255,255,0.15)'} strokeWidth={2.5} className="shadow-md" />
-                <circle r="4" fill={activeStatus === 'delivered' ? '#A3C644' : 'rgba(255,255,255,0.2)'} />
-              </g>
-
-
-              {/* Animated Real Biker Vector Art (Replaces emoji 🛵) */}
-              {activeStatus === 'dispatched' && (
-                <g 
-                  style={{
-                    transform: `translate(${riderX}px, ${riderY}px) rotate(${riderAngle}deg)`,
-                    transition: 'transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
-                  }}
-                  className="vibrating-bike"
-                >
-                  {/* Glowing halo */}
-                  <circle r="16" fill="rgba(163, 198, 68, 0.25)" className="animate-pulse" />
-                  
-                  {/* Vector Scooter Group (Drawn detailed, looks like real delivery operations) */}
-                  <g transform="translate(-11, -11)">
-                    {/* Delivery Box (Lime Green) */}
-                    <rect x="1.5" y="3.5" width="6.5" height="6.5" rx="1" fill="#A3C644" stroke="#000" strokeWidth="0.8" />
-                    {/* Box Strap/Detail */}
-                    <line x1="1.5" y1="6.5" x2="8" y2="6.5" stroke="#000" strokeWidth="0.5" />
-                    {/* Scooter Chassis (Dark grey) */}
-                    <path d="M 8 9.5 H 14.5 L 18 13.5 H 10 Z" fill="#222" stroke="#000" strokeWidth="0.8" />
-                    {/* Wheels */}
-                    <circle cx="5.5" cy="14" r="2.8" fill="#111" stroke="#555" strokeWidth="0.8" />
-                    <circle cx="5.5" cy="14" r="1" fill="#fff" />
-                    <circle cx="15.5" cy="14" r="2.8" fill="#111" stroke="#555" strokeWidth="0.8" />
-                    <circle cx="15.5" cy="14" r="1" fill="#fff" />
-                    {/* Biker Body / Jacket (White/Lime) */}
-                    <path d="M 8.5 7 L 11.5 4 L 14 8.5 L 11 11 Z" fill="#333" />
-                    {/* Helmet */}
-                    <circle cx="11.5" cy="3" r="2" fill="#fff" stroke="#000" strokeWidth="0.5" />
-                    <path d="M 12 2.5 H 13.5" stroke="#000" strokeWidth="0.8" strokeLinecap="round" />
-                    {/* Steering handlebars */}
-                    <line x1="15.5" y1="9" x2="16.5" y2="12" stroke="#fff" strokeWidth="1" strokeLinecap="round" />
-                  </g>
-                </g>
-              )}
-            </svg>
-            <span className="absolute bottom-2 right-6 text-[8px] font-bold uppercase text-gray-500 tracking-wider bg-black/80 px-2 py-0.5 rounded border border-white/5">{getDestinationArea()}</span>
-          </div>
-        </div>
-
-        {/* LINEAR STATUS TIMELINE */}
-        <div className="p-5 rounded-2xl border border-white/5 bg-white/[0.02] space-y-6">
-          <div className="relative pl-6 before:content-[''] before:absolute before:left-[5px] before:top-2 before:bottom-2 before:w-[1px] before:bg-white/10">
-            {steps.map((step, idx) => {
-              const state = getStepState(step.status, idx);
-              return (
-                <div key={idx} className="relative flex justify-between items-start mb-6 last:mb-0">
-                  <div className={`absolute -left-[24px] top-1 w-2.5 h-2.5 rounded-full border flex items-center justify-center transition-all ${
-                    state === 'completed' 
-                      ? 'bg-[#A3C644] border-[#A3C644]' 
-                      : state === 'active' 
-                        ? 'bg-[#050505] border-[#A3C644] scale-110' 
-                        : 'bg-[#050505] border-white/10'
-                  }`}>
-                    {state === 'active' && <div className="w-1 h-1 bg-[#A3C644] rounded-full animate-ping" />}
-                  </div>
-
-                  <div className="flex-1 min-w-0 ml-2">
-                    <h4 className={`text-[11px] font-bold uppercase tracking-wider ${
-                      state === 'active' ? 'text-[#A3C644]' : state === 'completed' ? 'text-white' : 'text-gray-500'
+            </div>
+            
+            {/* Nodes */}
+            <div className="relative flex justify-between">
+              {[
+                { label: 'Received' },
+                { label: 'Preparing' },
+                { label: 'On the Way' },
+                { label: 'Delivered' }
+              ].map((node, nIdx) => {
+                const statusIndices = { pending: 0, confirmed: 0, preparing: 1, processing: 1, dispatched: 2, delivered: 3 };
+                const currentIdx = statusIndices[(activeStatus || 'pending').toLowerCase()] ?? 0;
+                const isCompleted = currentIdx >= nIdx;
+                const isActive = currentIdx === nIdx;
+                return (
+                  <div key={nIdx} className="flex flex-col items-center z-10">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-all ${
+                      isCompleted ? 'bg-[#A3C644] text-black shadow-[0_0_12px_rgba(163,198,68,0.3)]' : 'bg-[#050505] border border-white/10 text-gray-600'
                     }`}>
-                      {step.title}
-                    </h4>
-                    <p className="text-[10px] text-gray-500 font-medium mt-0.5">
-                      {step.desc}
-                    </p>
+                      {isCompleted ? (
+                        <span className="text-[10px] font-black">✓</span>
+                      ) : (
+                        <span className="w-1.5 h-1.5 rounded-full bg-gray-700" />
+                      )}
+                    </div>
+                    <span className={`text-[9px] font-bold uppercase tracking-wider mt-2.5 ${
+                      isActive ? 'text-[#A3C644]' : isCompleted ? 'text-white' : 'text-gray-600'
+                    }`}>
+                      {node.label}
+                    </span>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Current Status Log description */}
+          <div className="pt-4 border-t border-white/5 text-center">
+            <p className="text-[10px] text-gray-400 font-semibold leading-relaxed">
+              {STATUS_NOTIFICATIONS[activeStatus.toLowerCase()]?.trackerLog || '⏳ Updating order status...'}
+            </p>
           </div>
         </div>
 
@@ -1078,11 +853,6 @@ export default function TrackOrder() {
                     placeholder="Type message..."
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    onBlur={() => {
-                      window.scrollTo(0, 0);
-                      document.body.scrollTop = 0;
-                      document.documentElement.scrollTop = 0;
-                    }}
                     aria-label="Type message to dispatcher"
                     className="bg-transparent border-none outline-none text-white font-semibold text-xs w-full placeholder:text-gray-600"
                   />

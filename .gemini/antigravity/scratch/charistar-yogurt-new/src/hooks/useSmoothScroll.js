@@ -36,13 +36,13 @@ export function useSmoothScroll() {
         const { default: Lenis } = await import('lenis');
 
         lenis = new Lenis({
-          lerp: 0.085,            // Physics interpolation — the magic butter knob
+          lerp: 0.25,             // Higher lerp = less drift and motion blur, reducing eye fatigue
           smoothWheel: true,      // Smooth mouse-wheel on desktop
-          touchMultiplier: 1.8,   // Extra momentum on touch screens
+          touchMultiplier: 1.2,   // Predictable touch momentum
           infinite: false,
           gestureOrientation: 'vertical',
           normalizeWheel: true,   // Normalise cross-browser wheel delta
-          syncTouch: false,       // Let native touch handle itself (prevents conflicts on iOS)
+          syncTouch: false,       // Let native touch handle itself
         });
 
         lenisRef.current = lenis;

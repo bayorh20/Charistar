@@ -162,11 +162,15 @@ export default function AdminOrders({ orders, setOrders }) {
                   <p className="text-white font-medium bg-[#050505]/40 p-6 rounded-2xl border border-white/5 text-sm leading-relaxed">
                     {selectedOrder.address ? (
                       <>
-                        <span className="text-white font-black">{selectedOrder.address.location}</span><br/>
-                        <span className="text-gray-400 font-bold text-xs mt-1.5 inline-block">Phone: {selectedOrder.address.phone}</span><br/>
-                        {selectedOrder.address.notes && (
+                        <span className="text-white font-black">
+                          {typeof selectedOrder.address === 'object' ? selectedOrder.address.location : selectedOrder.address}
+                        </span><br/>
+                        <span className="text-gray-400 font-bold text-xs mt-1.5 inline-block">
+                          Phone: {selectedOrder.customerPhone || (typeof selectedOrder.address === 'object' ? selectedOrder.address.phone : '')}
+                        </span><br/>
+                        {(selectedOrder.notes || (typeof selectedOrder.address === 'object' ? selectedOrder.address.notes : '')) && (
                           <div className="mt-3 bg-charistar-green/10 text-charistar-green border border-charistar-green/20 px-3.5 py-2 rounded-xl text-xs font-bold italic">
-                            Note: {selectedOrder.address.notes}
+                            Note: {selectedOrder.notes || (typeof selectedOrder.address === 'object' ? selectedOrder.address.notes : '')}
                           </div>
                         )}
                       </>

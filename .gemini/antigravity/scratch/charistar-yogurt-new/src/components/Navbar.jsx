@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Home, User, ShoppingCart, X, Trash2, CreditCard, CheckCircle, Package, Store } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
@@ -31,6 +31,29 @@ export default function Navbar() {
 
   const [checkingOut, setCheckingOut] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [isScrollingDown, setIsScrollingDown] = useState(false);
+  const [isAtTop, setIsAtTop] = useState(true);
+
+  // Scroll detection for dynamic island
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+    
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      setIsAtTop(currentScrollY < 20);
+      
+      if (currentScrollY > lastScrollY && currentScrollY > 50) {
+        setIsScrollingDown(true);
+      } else if (currentScrollY < lastScrollY) {
+        setIsScrollingDown(false);
+      }
+      
+      lastScrollY = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Auth form states
   const [name, setName] = useState('');
@@ -200,10 +223,12 @@ export default function Navbar() {
       {!isProductPage && (
         <div className="sticky bottom-6 flex justify-center z-30 pointer-events-none">
           <div
-            className={`pointer-events-auto glass-nav border border-white/10 shadow-neon transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] overflow-hidden ${
+            className={`pointer-events-auto glass-nav border shadow-neon transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] overflow-hidden ${
               isCartOpen
-                ? 'w-[92%] max-w-[440px] rounded-[2rem] h-auto max-h-[75vh]'
-                : 'w-[92%] max-w-[440px] rounded-[2.5rem] h-[4.5rem]'
+                ? 'w-[92%] max-w-[440px] rounded-[2rem] h-auto max-h-[75vh] border-white/10 opacity-100'
+                : isScrollingDown 
+                  ? 'w-[75%] max-w-[320px] rounded-[3rem] h-[3.8rem] border-white/5 opacity-80 backdrop-blur-md translate-y-2' 
+                  : 'w-[92%] max-w-[440px] rounded-[2.5rem] h-[4.5rem] border-white/10 opacity-100'
             }`}
           >
             {/* ── CART PANEL (rendered inside the morphed nav) ── */}
@@ -299,7 +324,7 @@ export default function Navbar() {
             {/* ── NAV BAR ITEMS (always visible, hidden when cart is open) ── */}
             <div
               className={`flex flex-row items-center justify-between px-2 transition-all duration-300 ${
-                isCartOpen ? 'h-0 opacity-0 overflow-hidden pointer-events-none' : 'h-[4.5rem] opacity-100'
+                isCartOpen ? 'h-0 opacity-0 overflow-hidden pointer-events-none' : (isScrollingDown ? 'h-[3.8rem] opacity-100' : 'h-[4.5rem] opacity-100')
               }`}
             >
               {navItems.map((item) => {
@@ -313,17 +338,17 @@ export default function Navbar() {
                       onClick={() => setIsCartOpen(true)}
                       className="flex-1 flex flex-col items-center justify-center gap-0.5 h-full relative"
                     >
-                      <div className={`relative flex items-center justify-center w-10 h-10 rounded-full bg-charistar-green text-black shadow-sm active:scale-95 transition-transform duration-75 ${
+                      <div className={`relative flex items-center justify-center transition-all duration-300 ${isScrollingDown ? 'w-8 h-8' : 'w-10 h-10'} rounded-full bg-charistar-green text-black shadow-sm active:scale-95 ${
                         cartBump ? 'cart-bump-animation' : ''
                       }`}>
-                        <Icon size={20} strokeWidth={2.5} className="flex-shrink-0" />
+                        <Icon size={isScrollingDown ? 16 : 20} strokeWidth={2.5} className="flex-shrink-0" />
                         {totalQuantity > 0 && (
-                          <span className="absolute -top-1 -right-1 w-4 h-4 bg-black text-charistar-green text-[9px] font-extrabold flex items-center justify-center rounded-full border border-charistar-green">
+                          <span className={`absolute -top-1 -right-1 bg-black text-charistar-green font-extrabold flex items-center justify-center rounded-full border border-charistar-green ${isScrollingDown ? 'w-3 h-3 text-[7px]' : 'w-4 h-4 text-[9px]'}`}>
                             {totalQuantity > 9 ? '9+' : totalQuantity}
                           </span>
                         )}
                       </div>
-                      <span className="text-[9px] font-bold text-charistar-green tracking-wide uppercase">{item.label}</span>
+                      {!isScrollingDown && <span className="text-[9px] font-bold text-charistar-green tracking-wide uppercase mt-0.5">{item.label}</span>}
                     </button>
                   );
                 }
@@ -332,8 +357,8 @@ export default function Navbar() {
                   return (
                     <button key={item.path} onClick={() => openAuthModal('login')}
                       className="flex-1 flex flex-col items-center justify-center gap-0.5 h-full text-gray-500 hover:text-white transition-colors duration-75">
-                      <Icon size={20} strokeWidth={2} fill="none" className="flex-shrink-0" />
-                      <span className="text-[9px] font-semibold tracking-wide uppercase">{item.label}</span>
+                      <Icon size={isScrollingDown ? 18 : 20} strokeWidth={2} fill="none" className="flex-shrink-0" />
+                      {!isScrollingDown && <span className="text-[9px] font-semibold tracking-wide uppercase mt-0.5">{item.label}</span>}
                     </button>
                   );
                 }
@@ -343,15 +368,15 @@ export default function Navbar() {
                     className={`flex-1 flex flex-col items-center justify-center gap-0.5 h-full transition-colors duration-75 ${
                       isActive ? 'text-charistar-green' : 'text-gray-500 hover:text-white'
                     }`}>
-                    <div className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-75 ${
+                    <div className={`flex items-center justify-center ${isScrollingDown ? 'w-6 h-6' : 'w-8 h-8'} rounded-full transition-all duration-75 ${
                       isActive ? 'bg-charistar-green/15' : ''
                     }`}>
-                      <Icon size={19} strokeWidth={isActive ? 2.5 : 2}
+                      <Icon size={isScrollingDown ? 17 : 19} strokeWidth={isActive ? 2.5 : 2}
                         fill={isActive ? 'currentColor' : 'none'} className="flex-shrink-0" />
                     </div>
-                    <span className={`text-[9px] font-bold tracking-wide uppercase ${
+                    {!isScrollingDown && <span className={`text-[9px] font-bold tracking-wide uppercase mt-0.5 ${
                       isActive ? 'text-charistar-green' : 'text-gray-500'
-                    }`}>{item.label}</span>
+                    }`}>{item.label}</span>}
                   </Link>
                 );
               })}

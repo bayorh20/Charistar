@@ -26,7 +26,7 @@ import {
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, onSnapshot, doc, setDoc } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 // Import All 17 Dashboard Modules
@@ -48,7 +48,7 @@ import AdminInventory from '../components/admin/AdminInventory';
 import AdminSettings from '../components/admin/AdminSettings';
 
 export default function AdminDashboard() {
-  const { currentUser } = useAuth();
+  const { currentUser, authenticate, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -75,17 +75,24 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Autonomous Admin Auth Session State
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => {
-    return localStorage.getItem('charistar_admin_logged_in') === 'true';
-  });
+  // Admin credentials input states
   const [adminPhone, setAdminPhone] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState('');
   const [isSubmittingAuth, setIsSubmittingAuth] = useState(false);
 
+  // Securely verify admin privileges dynamically from Auth Context state
+  const isAdminLoggedIn = currentUser && currentUser.role === 'admin';
+
   useEffect(() => {
+    if (!isAdminLoggedIn) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+
     // Real-time listener for orders
     const unsubOrders = onSnapshot(collection(db, 'orders'), (snapshot) => {
       setOrders(snapshot.docs.map(doc => {
@@ -109,6 +116,8 @@ export default function AdminDashboard() {
           _sortTime: createdAtMs
         };
       }).sort((a,b) => b._sortTime - a._sortTime));
+    }, (err) => {
+      console.error("Orders listener error:", err);
     });
 
     // Real-time listener for products
@@ -120,16 +129,22 @@ export default function AdminDashboard() {
         return orderA - orderB;
       });
       setProducts(fetched);
+    }, (err) => {
+      console.error("Products listener error:", err);
     });
 
     // Real-time listener for categories
     const unsubCategories = onSnapshot(collection(db, 'categories'), (snapshot) => {
       setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (err) => {
+      console.error("Categories listener error:", err);
     });
 
     // Real-time listener for users
     const unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
       setUsers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (err) => {
+      console.error("Users listener error:", err);
     });
 
     setLoading(false);
@@ -140,35 +155,44 @@ export default function AdminDashboard() {
       unsubCategories();
       unsubUsers();
     };
-  }, []);
+  }, [isAdminLoggedIn]);
 
-  const handleAdminLogin = (e) => {
+  const handleAdminLogin = async (e) => {
     if (e) e.preventDefault();
     setIsSubmittingAuth(true);
     setAuthError('');
 
-    // Admin Credentials Bypass or Specific credentials match
-    const isMockBypass = !adminPhone && !adminPassword;
-    const isCredMatch = (adminPhone === 'admin' && adminPassword === 'admin') || (adminPhone === '09000000000' && adminPassword === 'adminpass');
+    try {
+      const cleanPhone = adminPhone.trim();
+      if (!cleanPhone || !adminPassword) {
+        throw new Error("Please enter both Terminal ID (Phone Number) and Console Key.");
+      }
 
-    if (isMockBypass || isCredMatch) {
-      setTimeout(() => {
-        localStorage.setItem('charistar_admin_logged_in', 'true');
-        setIsAdminLoggedIn(true);
-        setIsSubmittingAuth(false);
-      }, 500);
-    } else {
-      setTimeout(() => {
-        setAuthError('Access Denied: Invalid administrator credentials. Tip: Click "Demo Bypass Login" below.');
-        setIsSubmittingAuth(false);
-      }, 500);
+      // Authenticate via Firebase Auth
+      const user = await authenticate(cleanPhone, adminPassword);
+
+      // Verify role === 'admin' in Firestore immediately
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      if (!userDoc.exists() || userDoc.data().role !== 'admin') {
+        // Log out user immediately if they lack admin privileges
+        await logout();
+        throw new Error("Access Denied: Insufficient authorization. Administrator credentials required.");
+      }
+    } catch (err) {
+      console.error("Admin Login Error:", err);
+      setAuthError(err.message || 'Authentication failed. Please verify credentials.');
+    } finally {
+      setIsSubmittingAuth(false);
     }
   };
 
-  const handleAdminLogout = () => {
+  const handleAdminLogout = async () => {
     if (window.confirm("Disconnect from Charistar Admin Console?")) {
-      localStorage.removeItem('charistar_admin_logged_in');
-      setIsAdminLoggedIn(false);
+      try {
+        await logout();
+      } catch (err) {
+        console.error("Admin Logout Error:", err);
+      }
     }
   };
 
@@ -218,10 +242,10 @@ export default function AdminDashboard() {
 
           <form onSubmit={handleAdminLogin} className="w-full space-y-5 text-left">
             <div>
-              <label className="block text-gray-500 text-[10px] font-black uppercase tracking-widest mb-2 ml-1">Terminal ID</label>
+              <label className="block text-gray-500 text-[10px] font-black uppercase tracking-widest mb-2 ml-1">Terminal Phone Number</label>
               <input 
-                type="text" 
-                placeholder="e.g. admin"
+                type="tel" 
+                placeholder="e.g. 09000000000"
                 value={adminPhone} 
                 onChange={e => setAdminPhone(e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white focus:border-charistar-green focus:bg-black/40 outline-none transition-all text-sm font-semibold"
@@ -263,19 +287,12 @@ export default function AdminDashboard() {
             </button>
           </form>
 
-          {/* Quick Demo Access Bypass */}
-          <div className="w-full border-t border-white/5 mt-8 pt-6 flex flex-col items-center">
-            <span className="text-[10px] text-gray-600 font-extrabold uppercase tracking-widest mb-3 flex items-center gap-1.5"><HelpCircle size={10}/> Safe Sandbox Environment</span>
-            <button
-              onClick={() => handleAdminLogin()}
-              className="relative group overflow-hidden w-full py-4 bg-charistar-green/10 border border-charistar-green/20 hover:border-charistar-green/50 text-charistar-green hover:text-white hover:bg-charistar-green/20 transition-all font-black uppercase tracking-widest text-[11px] rounded-xl shadow-lg"
-            >
-              {/* Glowing pulsar element inside button */}
-              <div className="absolute inset-0 bg-charistar-green/10 group-hover:scale-105 blur-md transition-transform duration-500 rounded-xl"></div>
-              <span className="relative z-10 flex items-center justify-center gap-2">
-                ⚡ Quick Bypass: Launch Demo
-              </span>
-            </button>
+          {/* Production Gateway Secured */}
+          <div className="w-full border-t border-white/5 mt-8 pt-6 flex flex-col items-center text-center">
+            <span className="text-[10px] text-gray-600 font-extrabold uppercase tracking-widest flex items-center gap-1.5 justify-center"><HelpCircle size={10}/> Production Security Enforced</span>
+            <p className="text-[9px] text-gray-500 mt-2 max-w-[280px]">
+              Access restricted to registered system administrators. Bypasses are disabled.
+            </p>
           </div>
         </motion.div>
       </div>

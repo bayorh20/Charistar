@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState, useRef } from 'react';
+import { Suspense, lazy, useEffect, useState, useLayoutEffect } from 'react';
 import { useSmoothScroll } from './hooks/useSmoothScroll';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import PhoneWrapper from './components/PhoneWrapper';
@@ -6,15 +6,17 @@ import Navbar from './components/Navbar';
 import Loader from './components/Loader';
 import FlashLoader from './components/FlashLoader';
 import ErrorBoundary from './components/ErrorBoundary';
+import { trackPixelEvent } from './utils/pixel';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const NotificationToast = lazy(() => import('./components/NotificationToast'));
 const MarketingPopup = lazy(() => import('./components/MarketingPopup'));
 const OfflineBanner = lazy(() => import('./components/OfflineBanner'));
 const PullToRefresh = lazy(() => import('./components/PullToRefresh'));
+const AutoUpdater   = lazy(() => import('./components/AutoUpdater'));
 import { CartProvider, useCart } from './contexts/CartContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { useRegisterSW } from 'virtual:pwa-register/react';
 import { onMessage } from 'firebase/messaging';
 import app, { messaging, db } from './firebase';
 import { doc, setDoc, collection, onSnapshot } from 'firebase/firestore';
@@ -24,12 +26,12 @@ const LandingPage    = lazy(() => import('./pages/LandingPage'));
 const Profile        = lazy(() => import('./pages/Profile'));
 const ShopPage       = lazy(() => import('./pages/ShopPage'));
 const Favorites      = lazy(() => import('./pages/Favorites'));
-const ProductDetails = lazy(() => import('./pages/ProductDetails'));
 const Checkout       = lazy(() => import('./pages/Checkout'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const TrackOrder     = lazy(() => import('./pages/TrackOrder'));
 const ActiveTrack    = lazy(() => import('./pages/ActiveTrack'));
 const OrdersPage     = lazy(() => import('./pages/OrdersPage'));
+const ProductDetails = lazy(() => import('./pages/ProductDetails'));
 
 function FCMTokenManager() {
   const { currentUser } = useAuth();
@@ -92,11 +94,13 @@ function FCMTokenManager() {
 function ScrollToTop() {
   const { pathname } = useLocation();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    // Track pageview on route change
+    trackPixelEvent('PageView', { content_name: pathname });
+    
     // Instant jump to top on route change — bypass Lenis for this
-    // Lenis exposes its instance via the window for external access
     if (window.__lenis) {
-      window.__lenis.scrollTo(0, { immediate: true });
+      window.__lenis.scrollTo(0, { immediate: true, force: true });
     } else {
       window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
@@ -224,19 +228,7 @@ function AppContent() {
   }, [lenisRef]);
 
   // ── Aggressive Auto-Update ──────────────────────────────────────
-  // 1. When the service worker detects a new version, skip waiting
-  //    and immediately reload ALL open tabs.
-  const { updateServiceWorker } = useRegisterSW({
-    onNeedRefresh() {
-      // New service worker is waiting — activate it immediately
-      updateServiceWorker(true);
-    },
-    onOfflineReady() {},
-    onRegisteredSW(swUrl, r) {
-      // We rely entirely on the visibilitychange / focus listeners below
-      // instead of a 20-second setInterval, to save battery and network on mobile.
-    },
-  });
+  // Now handled exclusively by AutoUpdater component to show toasts and aggressively clear PWA caches.
 
   // Prefetch heavy routes after idle
   useEffect(() => {
@@ -294,6 +286,7 @@ function AppContent() {
       <FCMTokenManager />
       <GlobalAdminListener />
       <Suspense fallback={null}>
+        <AutoUpdater />
         <OfflineBanner />
         <MarketingPopup />
         <NotificationToast />
@@ -312,9 +305,21 @@ function AppContent() {
   );
 }
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      cacheTime: 1000 * 60 * 30, // 30 minutes
+      refetchOnWindowFocus: true,
+      retry: 2,
+    },
+  },
+});
+
 function App() {
   return (
-    <BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
           <CartProvider>
@@ -322,7 +327,8 @@ function App() {
           </CartProvider>
         </AuthProvider>
       </ThemeProvider>
-    </BrowserRouter>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 }
 

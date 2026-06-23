@@ -8,6 +8,7 @@ import { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useTheme, THEMES } from '../contexts/ThemeContext';
+import Loader from '../components/Loader';
 
 // Module-level constant — defined BEFORE the component so it's always available
 const DEFAULT_SECTIONS = [
@@ -47,6 +48,7 @@ const ProductCard = memo(({ item, index, onAddToCart, onNavigate, onLike }) => {
       const img = new Image();
       img.src = item.image || item.img;
     }
+    import('./ProductDetails').catch(() => {});
   };
 
   const style = item.displayStyle || 'Standard';
@@ -107,50 +109,45 @@ const ProductCard = memo(({ item, index, onAddToCart, onNavigate, onLike }) => {
 
   return (
     <div 
-      className={`glass-panel rounded-2xl p-5 relative flex flex-col group will-change-transform ${spanClass} ${isHighlight ? 'border-2 border-yellow-400/50 shadow-[0_0_20px_rgba(250,204,21,0.2)] bg-gradient-to-b from-[#1a1a1a] to-black' : 'border border-white/8 shadow-[0_12px_30px_-10px_rgba(0,0,0,0.5)]'}`}
+      className={`flex flex-col group will-change-transform cursor-pointer ${spanClass}`}
       style={{ transform: 'translate3d(0,0,0)' }}
+      onClick={() => onNavigate(item.id || index)}
     >
-      <button 
-        onClick={(e) => { e.stopPropagation(); onLike(); }}
-        className="absolute top-7 right-7 z-10 w-9 h-9 flex items-center justify-center rounded-lg bg-black/60 shadow-sm hover:bg-black/80 transition-colors"
-      >
-        <Heart size={18} className={item.id === 1 || item.id === 2 ? 'text-charistar-green fill-charistar-green' : 'text-white'} strokeWidth={2} />
-      </button>
-      
-      {/* Product Image navigates to Details Page */}
-      <div 
-        onClick={() => onNavigate(item.id || index)}
-        className={`block tap-target w-full mb-4 rounded-xl overflow-hidden shadow-[0_8px_20px_-8px_rgba(0,0,0,0.4)] border border-white/10 cursor-pointer ${isBanner ? 'h-[300px]' : isFeatured ? 'h-[260px]' : 'h-[220px]'}`}
-      >
-         <img 
-           src={item.image || item.img} 
-           alt={item.title} 
-           loading="lazy"
-           decoding="async"
-           className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 ease-out" 
-         />
+      {/* Product Image Frame with reduced curve */}
+      <div className={`w-full overflow-hidden relative mb-3 bg-[#0a0a0a] rounded-2xl shadow-[0_8px_20px_-8px_rgba(0,0,0,0.4)] ${isHighlight ? 'border-2 border-yellow-400/50 shadow-[0_0_20px_rgba(250,204,21,0.2)] bg-gradient-to-b from-[#1a1a1a] to-black' : 'border border-white/5'} ${isBanner ? 'aspect-[21/9]' : 'aspect-[4/4.5]'}`}>
+        
+        {/* Like Button inside image */}
+        <button 
+          onClick={(e) => { e.stopPropagation(); onLike(); }}
+          className="absolute top-3 right-3 z-20 w-9 h-9 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md shadow-sm hover:bg-black/60 transition-colors border border-white/10"
+        >
+          <Heart size={16} className={item.id === 1 || item.id === 2 ? 'text-charistar-green fill-charistar-green' : 'text-white'} strokeWidth={2} />
+        </button>
+
+        <img 
+          src={item.image || item.img} 
+          alt={item.title} 
+          loading="lazy"
+          decoding="async"
+          className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 ease-out" 
+        />
+        
+        {/* Floating Add to Cart Button */}
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddToCart(e, item);
+          }}
+          className="absolute bottom-3 right-3 w-10 h-10 rounded-[12px] bg-black/40 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white hover:bg-charistar-green hover:text-black hover:border-transparent hover:scale-110 active:scale-90 transition-all shadow-lg z-20"
+        >
+          <Plus size={20} strokeWidth={2.5} />
+        </button>
       </div>
       
-      <div className="px-2">
-        {/* Title Link navigates to Details */}
-        <div 
-          onClick={() => onNavigate(item.id || index)}
-          className="hover:text-charistar-green transition-colors inline-block cursor-pointer"
-        >
-          <h4 className={`font-extrabold tracking-tight mb-2 leading-snug text-white ${isBanner ? 'text-[24px]' : 'text-[18px]'}`}>{item.title}</h4>
-        </div>
-        <p className="text-[13px] text-gray-400 leading-relaxed mb-5 line-clamp-2 font-medium">{item.subtitle}</p>
-        
-        <div className="flex justify-between items-center">
-          <span className={`font-extrabold tracking-tighter text-white ${isBanner ? 'text-[26px]' : 'text-[22px]'}`}>{item.price}</span>
-          {/* Plus button click adds directly to cart instantly */}
-          <button 
-            className="w-11 h-11 bg-charistar-green rounded-xl flex items-center justify-center text-black shadow-sm active:scale-90 transition-transform" 
-            onClick={(e) => { e.stopPropagation(); onAddToCart(e, item); }}
-          >
-            <Plus size={22} strokeWidth={3} />
-          </button>
-        </div>
+      {/* Typography Under the Photo */}
+      <div className="px-1 block">
+        <h4 className={`text-white font-extrabold leading-snug line-clamp-2 tracking-tight group-hover:text-charistar-green transition-colors ${isBanner ? 'text-[22px] mb-1' : 'text-[15px] mb-0.5'}`}>{item.title}</h4>
+        <span className={`text-charistar-green font-bold opacity-100 ${isBanner ? 'text-lg' : 'text-[14px]'}`}>{item.price}</span>
       </div>
     </div>
   );
@@ -163,38 +160,44 @@ const ParfaitCard = memo(({ parfait, index, onAddToCart, onNavigate }) => {
       const img = new Image();
       img.src = parfait.img;
     }
+    import('./ProductDetails').catch(() => {});
   };
   return (
     <div 
-      className="tap-target flex-shrink-0 w-[180px] glass-panel rounded-2xl p-4 flex flex-col will-change-transform"
+      className="tap-target flex-shrink-0 w-[150px] flex flex-col group will-change-transform cursor-pointer"
       style={{ transform: 'translate3d(0,0,0)' }}
       onMouseEnter={handlePreload}
       onTouchStart={handlePreload}
+      onClick={() => onNavigate(parfait.id)}
     >
-      <div 
-        onClick={() => onNavigate(parfait.id)}
-        className="tap-target w-full h-[145px] rounded-xl overflow-hidden mb-3 border border-white/10 cursor-pointer"
-      >
-        <img src={parfait.img} alt={parfait.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
-      </div>
-      <h4 className="font-extrabold text-[14px] text-white tracking-tight leading-snug mb-1.5">{parfait.title}</h4>
-      <p className="text-[12px] text-gray-500 font-medium mb-3 line-clamp-1">{parfait.sub}</p>
-      <div className="flex justify-between items-center mt-auto">
-        <span className="font-extrabold text-[15px] text-white">{parfait.price}</span>
+      <div className="w-full aspect-[4/4.5] overflow-hidden relative mb-2.5 bg-[#0a0a0a] rounded-2xl shadow-sm border border-white/5">
+        <img 
+          src={parfait.img} 
+          alt={parfait.title} 
+          loading="lazy" 
+          decoding="async" 
+          className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 ease-out" 
+        />
+        
         <button
-          className="w-8 h-8 bg-charistar-green rounded-lg flex items-center justify-center text-black shadow-sm active:scale-90 transition-transform"
+          className="absolute bottom-2 right-2 w-8 h-8 rounded-[10px] bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-charistar-green hover:text-black transition-colors active:scale-90 shadow-sm z-20"
           onClick={(e) => { e.stopPropagation(); onAddToCart(e, parfait); }}
         >
-          <Plus size={16} strokeWidth={3} />
+          <Plus size={16} strokeWidth={2.5} />
         </button>
+      </div>
+
+      <div className="px-0.5">
+        <h4 className="text-white font-extrabold text-[13px] leading-snug line-clamp-2 tracking-tight group-hover:text-charistar-green transition-colors mb-0.5">{parfait.title}</h4>
+        <span className="text-charistar-green font-bold text-[12px]">{parfait.price}</span>
       </div>
     </div>
   );
 });
 
 
-// Memoized Premium Dynamic Auto-playing Hero Carousel Banner with indicators
-const HeroCarousel = memo(({ slides }) => {
+// Memoized Flat Auto-playing Banner Carousel
+const FlatBannerCarousel = memo(({ slides }) => {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -205,7 +208,7 @@ const HeroCarousel = memo(({ slides }) => {
     if (slides.length <= 1) return;
     const interval = setInterval(() => {
       setIndex((prev) => (prev + 1) % slides.length);
-    }, 6000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [slides.length]);
 
@@ -215,59 +218,48 @@ const HeroCarousel = memo(({ slides }) => {
   if (!slide) return null;
 
   return (
-    <section className="relative w-full h-[180px] rounded-[32px] overflow-hidden shadow-[0_15px_40px_-10px_rgba(0,0,0,0.4)] mb-8 border border-white/5 bg-charistar-gray">
+    <section className="relative w-full h-[150px] sm:h-[180px] rounded-2xl overflow-hidden mb-6 shadow-sm border border-white/5 bg-[#121212]">
       <AnimatePresence mode="wait">
         <motion.div
           key={slide.id || safeIndex}
-          initial={{ opacity: 0, x: 25 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -25 }}
-          transition={{ duration: 0.38, ease: [0.34, 1.56, 0.64, 1] }}
-          className="absolute inset-0 w-full h-full flex flex-row items-center justify-between"
-          style={{
-            background: slide.background === 'green-gradient' 
-              ? 'linear-gradient(135deg, #0d1f0d 0%, #1a3a1a 40%, #0a1a0a 100%)' 
-              : 'var(--bg-secondary)'
-          }}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 1.02 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+          className="absolute inset-0 w-full h-full"
         >
-          <div className="relative z-10 w-[65%] p-7">
-            <h2 className="text-white text-3xl font-extrabold tracking-tight leading-[1.1] mb-3">
-              {slide.title} <br/>
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-charistar-green to-emerald-400">
-                {slide.titleAccent}
-              </span>
+          {/* Background Image */}
+          <img 
+            src={slide.imageUrl || "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&q=80"} 
+            alt={slide.title} 
+            loading="lazy"
+            className="absolute inset-0 w-full h-full object-cover" 
+          />
+          {/* Dark Overlay for Text Readability */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent" />
+          
+          {/* Text Content */}
+          <div className="absolute inset-0 flex flex-col justify-center p-5 z-10 w-[75%]">
+            <span className="inline-block text-[9px] font-bold tracking-[0.1em] text-charistar-green uppercase mb-1">
+              Featured
+            </span>
+            <h2 className="text-white text-xl sm:text-2xl font-black tracking-tight leading-tight mb-1.5">
+              {slide.title} {slide.titleAccent && <span className="text-charistar-green">{slide.titleAccent}</span>}
             </h2>
-            <p className="text-gray-400 text-xs font-medium mb-5 tracking-wide">{slide.subtitle}</p>
-            <button className="bg-charistar-green text-black font-bold text-[13px] px-6 py-3 rounded-full shadow-sm active:scale-95 transition-transform">
-              {slide.btnText || 'Order Now'}
-            </button>
-          </div>
-          
-          {/* Decorative elements */}
-          <div className="absolute right-0 top-0 w-1/2 h-full bg-gradient-to-l from-charistar-green/20 to-transparent blur-2xl z-0"></div>
-          
-          {/* Floating Image */}
-          <div className="absolute -right-6 top-1/2 -translate-y-1/2 w-[180px] h-[180px] z-10 drop-shadow-xl">
-             <img 
-               src={slide.imageUrl || "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400&q=80"} 
-               alt={slide.titleAccent || "Parfait"} 
-               decoding="async"
-               fetchPriority="high"
-               className="w-full h-full object-cover rounded-full border-4 border-white/5 shadow-xl scale-110" 
-             />
+            <p className="text-gray-300 text-[11px] sm:text-xs font-medium line-clamp-2 w-full">{slide.subtitle}</p>
           </div>
         </motion.div>
       </AnimatePresence>
 
-      {/* Indicator dots */}
+      {/* Flat Indicator Dots */}
       {slides.length > 1 && (
-        <div className="absolute bottom-4 left-7 z-20 flex gap-1.5">
+        <div className="absolute bottom-3 left-5 z-20 flex gap-1.5">
           {slides.map((_, i) => (
             <button
               key={i}
               onClick={() => setIndex(i)}
-              className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                i === index ? 'bg-charistar-green w-5' : 'bg-white/30 hover:bg-white/50'
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                i === index ? 'bg-charistar-green w-5' : 'bg-white/40 w-1.5 hover:bg-white/80'
               }`}
             />
           ))}
@@ -276,6 +268,7 @@ const HeroCarousel = memo(({ slides }) => {
     </section>
   );
 });
+
 
 
 
@@ -299,7 +292,13 @@ export default function LandingPage() {
       return [];
     }
   });
-  const [loadingData, setLoadingData] = useState(true);
+  const [loadingData, setLoadingData] = useState(() => {
+    try {
+      const cached = localStorage.getItem('charistar_products_cache');
+      if (cached && JSON.parse(cached).length > 0) return false;
+    } catch (e) {}
+    return true;
+  });
   const { theme, setTheme } = useTheme();
 
   const handleCycleTheme = () => {
@@ -311,6 +310,7 @@ export default function LandingPage() {
   
   const [slides, setSlides] = useState([]);
   const [sections, setSections] = useState(DEFAULT_SECTIONS); // now safe — module-level constant
+  const [searchQuery, setSearchQuery] = useState('');
   const yogurtsRef = useRef(null);
   const parfaitRef = useRef(null);
 
@@ -344,13 +344,31 @@ export default function LandingPage() {
   const activeSlides = slides.filter(s => s.active !== false).sort((a, b) => (a.order || 0) - (b.order || 0));
   const displaySlides = activeSlides.length > 0 ? activeSlides : [
     {
-      id: 'default-1',
-      title: 'Free Delivery',
-      titleAccent: 'For Parfait',
-      subtitle: 'Up to 3 times per day',
-      btnText: 'Order Now',
-      imageUrl: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=400&q=80',
-      background: 'charistar-gray'
+      id: 'default-fura',
+      title: "Fresh millet & greek yogurt blend",
+      titleAccent: "Fura da Nono",
+      subtitle: "Sourced locally, prepared cleanly, delivered fresh.",
+      btnText: "Order Parfait",
+      imageUrl: "https://images.unsplash.com/photo-1553530666-ba11a7da3888?w=600&q=80",
+      background: "green-gradient"
+    },
+    {
+      id: 'default-zobo',
+      title: "Hibiscus infused berry goodness",
+      titleAccent: "Zobo Berry",
+      subtitle: "Vibrant local flavors meets premium yogurt layers.",
+      btnText: "Order Parfait",
+      imageUrl: "https://images.unsplash.com/photo-1488477304112-49658c47eefb?w=600&q=80",
+      background: "dark-gradient"
+    },
+    {
+      id: 'default-tigernut',
+      title: "Rich Kunu Aya inspired blend",
+      titleAccent: "Tigernut Coconut",
+      subtitle: "Creamy, lactose-free natural nourishment.",
+      btnText: "Order Now",
+      imageUrl: "https://images.unsplash.com/photo-1563805042-7684c8e9e533?w=600&q=80",
+      background: "green-gradient"
     }
   ];
 
@@ -447,91 +465,106 @@ export default function LandingPage() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.08 }}
-      className="bg-charistar-dark min-h-screen"
+      className="bg-charistar-dark min-h-screen relative overflow-hidden"
     >
-      <div className="perspective-container min-h-full w-full">
+      {/* Ambient Lighting Orbs */}
+      <div className="ambient-orb w-64 h-64 top-[-5%] left-[-10%]" style={{ '--orb-color': 'rgba(163, 198, 68, 0.4)' }} />
+      <div className="ambient-orb w-72 h-72 top-[40%] right-[-15%]" style={{ animationDelay: '2s', '--orb-color': 'rgba(4, 120, 87, 0.4)' }} />
+      <div className="ambient-orb w-80 h-80 bottom-[-10%] left-[20%]" style={{ animationDelay: '4s', '--orb-color': 'rgba(163, 198, 68, 0.15)' }} />
+
+      <div className="perspective-container min-h-full w-full relative z-10">
         <div 
           className="px-5 pt-5 bg-transparent min-h-full font-sans pb-32 under-sheet-content"
           style={{ willChange: 'transform' }}
         >
-          <header className="mb-6 pt-1">
-            <div className="flex justify-between items-center gap-4 mb-2">
-              <div>
-                <p className="text-[12px] text-gray-500 font-medium mb-1">
-                  {greeting}, {currentUser ? (currentUser.name || currentUser.displayName || '').split(' ')[0] : 'Guest'}! {emoji}
-                </p>
-                <h1 className="text-[28px] font-black text-white leading-tight tracking-tight">
-                  What do you{' '}
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-charistar-green via-emerald-300 to-charistar-green bg-[length:200%_auto] animate-shimmer">
-                    crave
-                  </span>?
-                </h1>
-              </div>
+          {/* Sticky Header & Search */}
+          <div className="sticky top-0 z-40 bg-charistar-dark/80 backdrop-blur-xl -mx-5 px-5 pb-4 pt-2 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+            <header className="mb-4">
+              <div className="flex justify-between items-center gap-4 mb-2">
+                <div>
+                  <p className="text-[12px] text-gray-500 font-medium mb-1">
+                    {greeting}, {currentUser ? (currentUser.name || currentUser.displayName || '').split(' ')[0] : 'Guest'}! {emoji}
+                  </p>
+                  <h1 className="text-[28px] font-black text-white leading-tight tracking-tight">
+                    What do you{' '}
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-charistar-green via-emerald-300 to-charistar-green bg-[length:200%_auto] animate-shimmer">
+                      crave
+                    </span>?
+                  </h1>
+                </div>
 
-              {/* Theme switcher + Avatar row */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {/* Theme cycle button */}
-                <button
-                  onClick={handleCycleTheme}
-                  title="Personalize Theme"
-                  className="tap-target w-10 h-10 rounded-2xl glass-panel border border-white/10 flex flex-col items-center justify-center gap-0.5 shadow-[0_4px_12px_rgba(0,0,0,0.4)] active:scale-90 hover:scale-105"
-                  style={{ transition: 'transform 80ms ease' }}
-                >
-                  <span style={{ fontSize: '15px', lineHeight: 1 }}>{THEMES[theme].emoji}</span>
-                  <span style={{ fontSize: '7px', fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-secondary, #a0a0a0)' }}>{THEMES[theme].label}</span>
-                </button>
+                {/* Theme switcher + Avatar row */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Theme cycle button */}
+                  <button
+                    onClick={handleCycleTheme}
+                    title="Personalize Theme"
+                    className="tap-target w-10 h-10 rounded-2xl glass-panel border border-white/10 flex flex-col items-center justify-center gap-0.5 shadow-[0_4px_12px_rgba(0,0,0,0.4)] active:scale-90 hover:scale-105"
+                    style={{ transition: 'transform 80ms ease' }}
+                  >
+                    <span style={{ fontSize: '15px', lineHeight: 1 }}>{THEMES[theme].emoji}</span>
+                    <span style={{ fontSize: '7px', fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-secondary, #a0a0a0)' }}>{THEMES[theme].label}</span>
+                  </button>
 
-                {/* Avatar */}
-                <div className="relative tap-target group" onClick={handleProfileClick}>
-                  <div className="w-11 h-11 rounded-2xl overflow-hidden border border-white/10 bg-black/40 shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
-                    <img
-                      src={`https://api.dicebear.com/7.x/bottts-neutral/svg?seed=${displayName}`}
-                      alt="User Avatar"
-                      loading="lazy"
-                      decoding="async"
-                      className="w-full h-full object-cover bg-charistar-green/10"
-                    />
+                  {/* Avatar */}
+                  <div className="relative tap-target group" onClick={handleProfileClick}>
+                    <div className="w-11 h-11 rounded-2xl overflow-hidden border border-white/10 bg-black/40 shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
+                      <img
+                        src={`https://api.dicebear.com/9.x/micah/svg?seed=${displayName}&backgroundColor=transparent`}
+                        alt="User Avatar"
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover bg-charistar-green/10"
+                      />
+                    </div>
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-charistar-dark rounded-full flex items-center justify-center">
+                      <span className="w-2 h-2 bg-charistar-green rounded-full shadow-sm"></span>
+                    </span>
                   </div>
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-charistar-dark rounded-full flex items-center justify-center">
-                    <span className="w-2 h-2 bg-charistar-green rounded-full shadow-sm"></span>
-                  </span>
                 </div>
               </div>
-            </div>
-          </header>
+            </header>
 
-          {/* Search */}
-          <div className="relative mb-6">
-            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-500">
-              <Search size={18} />
+            {/* Search */}
+            <div className="relative">
+              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-500">
+                <Search size={18} />
+              </div>
+              <input 
+                type="text" 
+                placeholder="Search for yogurt or parfait..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl pl-11 pr-4 py-3.5 text-[13px] font-semibold text-white placeholder-gray-500 outline-none focus:border-charistar-green focus:bg-white/[0.08] transition-all"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    navigate(`/shop?q=${encodeURIComponent(e.target.value)}`);
+                  }
+                }}
+              />
             </div>
-            <input 
-              type="text" 
-              placeholder="Search for yogurt or parfait..." 
-              className="w-full bg-white/5 border border-white/10 rounded-2xl pl-11 pr-4 py-3.5 text-[13px] font-semibold text-white placeholder-gray-500 outline-none focus:border-charistar-green focus:bg-white/[0.08] transition-all"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  navigate(`/shop?q=${encodeURIComponent(e.target.value)}`);
-                }
-              }}
-            />
           </div>
 
-          {/* Hero Banner Slider */}
-          <HeroCarousel slides={displaySlides} />
-
-
-
+          <div className="mt-4">
+            {/* Flat Top Banner Slider */}
+            <FlatBannerCarousel slides={displaySlides} />
+          </div>
           {/* Dynamic Homepage Sections */}
           <div className="space-y-10">
             {sections.map((section) => {
               const IconComponent = getSectionIconComponent(section.icon);
               const sectionCategory = section.category || 'All';
               
-              // Filter products based on the section's configured category.
+              // Filter products based on the section's configured category and search query
               const filterCat = sectionCategory;
               
-              const filteredList = products.filter(item => filterCat === 'All' || item.category === filterCat);
+              const filteredList = products.filter(item => {
+                const matchesCategory = filterCat === 'All' || item.category === filterCat;
+                const matchesSearch = !searchQuery || 
+                  (item.title || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  (item.subtitle || '').toLowerCase().includes(searchQuery.toLowerCase());
+                return matchesCategory && matchesSearch;
+              });
 
               if (section.type === 'grid') {
                 return (
@@ -560,8 +593,10 @@ export default function LandingPage() {
                       </button>
                     </div>
 
-                    <div className="flex flex-col gap-6 px-1">
-                      {filteredList.length === 0 ? (
+                    <div className="grid grid-cols-2 gap-4 px-1">
+                      {loadingData ? (
+                        <Loader type="skeleton" count={3} />
+                      ) : filteredList.length === 0 ? (
                         <p className="text-gray-500 text-xs italic bg-white/5 p-6 rounded-2xl text-center border border-white/5">
                           No products found in this section.
                         </p>
@@ -569,8 +604,9 @@ export default function LandingPage() {
                         filteredList.map((item, i) => (
                           <motion.div
                             key={item.id || i}
-                            initial={{ opacity: 0 }}
-                            whileInView={{ opacity: 1 }}
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            whileHover={{ scale: 1.02, y: -4 }}
                             viewport={{ once: true, margin: "-30px" }}
                             transition={{ duration: 0.4, delay: Math.min(i * 0.06, 0.3), ease: "easeOut" }}
                           >

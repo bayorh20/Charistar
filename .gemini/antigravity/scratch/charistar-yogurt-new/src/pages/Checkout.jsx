@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, CreditCard, Wallet, Smartphone, MapPin, Phone, User, 
@@ -9,8 +9,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 import { payWithPaystack } from '../utils/paystack';
+import { trackPixelEvent } from '../utils/pixel';
 import { getDeliveryFee } from '../utils/deliveryMapEngine';
-import { collection, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 const ConfettiGenerator = () => {
@@ -173,21 +174,13 @@ export default function Checkout() {
   const [isGuestCheckout, setIsGuestCheckout] = useState(false);
   const [guestEmail, setGuestEmail] = useState('');
   
-  // Direct Card Payment States
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardName, setCardName] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCVV, setCardCVV] = useState('');
-  const [cardFocused, setCardFocused] = useState('');
-  const [ajaxPaymentStep, setAjaxPaymentStep] = useState(0); // 0 = idle, 1 = SSL connection, 2 = encryption, 3 = contacting gateway, 4 = OTP prompt, 5 = Paystack settling, 6 = database sync
-  const [showAjaxModal, setShowAjaxModal] = useState(false);
-  const [otpInput, setOtpInput] = useState('');
-  const [otpError, setOtpError] = useState('');
-  const [otpLoading, setOtpLoading] = useState(false);
+
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState('');
+  const [paidAmount, setPaidAmount] = useState(0);
+  const [remainingBalance, setRemainingBalance] = useState(0);
 
   useEffect(() => {
     if (!currentUser) {
@@ -196,6 +189,14 @@ export default function Checkout() {
       setPaymentMethod('wallet');
     }
   }, [currentUser]);
+
+  useEffect(() => {
+    trackPixelEvent('InitiateCheckout', {
+      value: finalTotal,
+      currency: 'NGN',
+      num_items: cartItems.length
+    });
+  }, []);
   
   // Wallet Refill Flow States
   const [showRefill, setShowRefill] = useState(false);
@@ -238,8 +239,8 @@ export default function Checkout() {
     }
   };
 
-  const subtotalAfterDiscount = Math.max(0, cartTotal - discount);
-  const finalTotal = subtotalAfterDiscount + deliveryFee;
+  const subtotalAfterDiscount = useMemo(() => Math.max(0, cartTotal - discount), [cartTotal, discount]);
+  const finalTotal = useMemo(() => subtotalAfterDiscount + deliveryFee, [subtotalAfterDiscount, deliveryFee]);
 
   useEffect(() => {
     if (currentUser) {
@@ -308,30 +309,6 @@ export default function Checkout() {
       triggerToast("Please enter your preferred custom time.", "error");
       return false;
     }
-    if (paymentMethod === 'card') {
-      const trimmedCard = cardNumber.replace(/\s+/g, '');
-      if (trimmedCard.length < 16 || !/^\d+$/.test(trimmedCard)) {
-        triggerToast("Please enter a valid 16-digit card number.", "error");
-        return false;
-      }
-      if (!cardName.trim()) {
-        triggerToast("Please enter the cardholder name.", "error");
-        return false;
-      }
-      if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) {
-        triggerToast("Please enter card expiry date in MM/YY format.", "error");
-        return false;
-      }
-      const [m, y] = cardExpiry.split('/').map(Number);
-      if (m < 1 || m > 12) {
-        triggerToast("Please enter a valid expiry month.", "error");
-        return false;
-      }
-      if (cardCVV.length < 3) {
-        triggerToast("Please enter a valid CVV.", "error");
-        return false;
-      }
-    }
     return true;
   };
 
@@ -341,75 +318,38 @@ export default function Checkout() {
     return `${nameToUse.trim().replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'customer'}@charistaryogurt.com`;
   };
 
-  const processDirectCardPayment = async () => {
-    if (!validateForm()) return;
-    
-    setIsProcessing(true);
-    setOtpInput('');
-    setOtpError('');
-    setOtpLoading(false);
-    setAjaxPaymentStep(1); // 1 = Initiating secure connection...
-    setShowAjaxModal(true);
-
-    // 1. SSL/TLS secure channel initiation...
-    await new Promise(resolve => setTimeout(resolve, 1400));
-    if (!showAjaxModal) return; // check if cancelled
-    
-    // 2. Encrypting card details...
-    setAjaxPaymentStep(2);
-    await new Promise(resolve => setTimeout(resolve, 1400));
-    if (!showAjaxModal) return;
-    
-    // 3. Contacting bank gateway...
-    setAjaxPaymentStep(3);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    if (!showAjaxModal) return;
-    
-    // 4. Require OTP
-    setAjaxPaymentStep(4);
-  };
-
-  const handleVerifyOtp = async (e) => {
-    if (e) e.preventDefault();
-    if (otpInput.length < 6) {
-      setOtpError('Please enter the 6-digit OTP code.');
-      return;
-    }
-    setOtpError('');
-    setOtpLoading(true);
-
-    try {
-      // 5. Settling payment with processor...
-      await new Promise(resolve => setTimeout(resolve, 1800));
-      setOtpLoading(false);
-      setAjaxPaymentStep(5);
-      
-      // 6. Creating order...
-      await new Promise(resolve => setTimeout(resolve, 1200));
-      setAjaxPaymentStep(6);
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      await createOrder('card');
-      setShowAjaxModal(false);
-    } catch (err) {
-      console.error(err);
-      setOtpError('Authorization failed. Please try again.');
-      setOtpLoading(false);
-    }
-  };
-
   const handlePlaceOrder = () => {
     if (!validateForm()) return;
 
     if (paymentMethod === 'card') {
-      processDirectCardPayment();
+      const reference = 'ord_' + Date.now();
+      // Call synchronously to preserve browser user-gesture context (needed for popup)
+      payWithPaystack({
+        email: getCustomerEmail(),
+        amount: finalTotal,
+        reference: reference,
+        onSuccess: async (response) => {
+          setIsProcessing(true);
+          await createOrder('card');
+        },
+        onCancel: () => {
+          setIsProcessing(false);
+          triggerToast('Payment cancelled.', 'error');
+        }
+      });
     } else {
       setIsProcessing(true);
       createOrder('wallet');
     }
   };
 
-  const createOrder = async (method) => {
+  // createOrderWithBalance: used after a successful top-up so we use the 
+  // freshly written balance rather than the (possibly stale) currentUser snapshot
+  const createOrderWithBalance = async (method, balanceOverride) => {
+    return createOrder(method, balanceOverride);
+  };
+
+  const createOrder = async (method, balanceOverride = null) => {
     if (cartItems.length === 0) {
       setIsProcessing(false);
       return;
@@ -421,12 +361,13 @@ export default function Checkout() {
           setIsProcessing(false);
           return;
         }
-        const walletBalance = currentUser?.walletBalance || 0;
+        // Use balanceOverride (from a fresh top-up) or fall back to currentUser snapshot
+        const walletBalance = balanceOverride !== null ? balanceOverride : (currentUser?.walletBalance || 0);
         if (walletBalance < finalTotal) {
           const shortage = finalTotal - walletBalance;
           setRefillAmount(shortage.toString());
           setShowRefill(true);
-          triggerToast(`Refill your wallet to complete this order.`, "error");
+          triggerToast(`Top up your wallet to complete this order.`, "error");
           setIsProcessing(false);
           return;
         }
@@ -469,23 +410,28 @@ export default function Checkout() {
       }
 
       if (method === 'wallet') {
-        const walletBalance = currentUser?.walletBalance || 0;
+        const currentBalance = balanceOverride !== null ? balanceOverride : Number(currentUser?.walletBalance || 0);
+        const newBalance = currentBalance - finalTotal;
         const userRef = doc(db, 'users', currentUser.uid);
-        await updateDoc(userRef, {
-          walletBalance: walletBalance - finalTotal
-        });
+        await setDoc(userRef, {
+          walletBalance: isNaN(newBalance) ? currentBalance : newBalance
+        }, { merge: true });
 
         await addDoc(collection(db, 'users', currentUser.uid, 'transactions'), {
           type: 'debit',
           amount: finalTotal,
-          description: `Order Payment (#${orderRef.id.slice(-6).toUpperCase()})`,
+          description: `Order Payment (#${orderRef.id?.slice(-6)?.toUpperCase() || 'ORDER'})`,
           createdAt: serverTimestamp()
         });
+
+        setRemainingBalance(isNaN(newBalance) ? currentBalance : newBalance);
+      } else {
+        setRemainingBalance(Number(currentUser?.walletBalance || 0));
       }
       if (currentUser) {
         const userRef = doc(db, 'users', currentUser.uid);
         const existingAddresses = currentUser.savedAddresses || [];
-        const trimmedAddress = delAddress.trim();
+        const trimmedAddress = (delAddress || '').trim();
         
         const addressExists = existingAddresses.some(a => 
           typeof a === 'object' ? a.address === trimmedAddress : a === trimmedAddress
@@ -496,18 +442,28 @@ export default function Checkout() {
           mergedAddresses = [...existingAddresses, {
             placeName: "Recent Delivery",
             address: trimmedAddress,
-            deliveryNote: delNotes.trim()
+            deliveryNote: (delNotes || '').trim()
           }];
         }
         
-        await updateDoc(userRef, {
-          name: delName,
-          phone: delPhone,
-          savedAddresses: mergedAddresses,
-          deliveryNote: delNotes
-        }).catch(err => console.error("Could not sync user profile:", err));
+        await setDoc(userRef, {
+          name: delName || '',
+          phone: delPhone || '',
+          savedAddresses: mergedAddresses || [],
+          deliveryNote: delNotes || ''
+        }, { merge: true }).catch(err => console.error("Could not sync user profile:", err));
       }
 
+      // Track Purchase event
+      trackPixelEvent('Purchase', {
+        value: finalTotal,
+        currency: 'NGN',
+        content_ids: cartItems.map(item => item.productId || item.id),
+        content_type: 'product',
+        num_items: cartItems.reduce((acc, item) => acc + item.quantity, 0)
+      });
+
+      setPaidAmount(finalTotal);
       setCreatedOrderId(orderRef.id);
       setSuccess(true);
       setIsProcessing(false);
@@ -520,7 +476,7 @@ export default function Checkout() {
   };
 
   const handleRefillWallet = () => {
-    const amountVal = parseFloat(refillAmount);
+    const amountVal = Math.floor(parseFloat(refillAmount));
     if (isNaN(amountVal) || amountVal <= 0) {
       triggerToast("Please enter a valid amount.", "error");
       return;
@@ -534,9 +490,9 @@ export default function Checkout() {
       onSuccess: async (response) => {
         try {
           const userRef = doc(db, 'users', currentUser.uid);
-          await updateDoc(userRef, {
-            walletBalance: (currentUser.walletBalance || 0) + amountVal
-          });
+          const currentBalance = Number(currentUser.walletBalance || 0);
+          const newBalance = isNaN(currentBalance) ? amountVal : currentBalance + amountVal;
+          await setDoc(userRef, { walletBalance: newBalance }, { merge: true });
           await addDoc(collection(db, 'users', currentUser.uid, 'transactions'), {
             type: 'credit',
             amount: amountVal,
@@ -545,16 +501,19 @@ export default function Checkout() {
           });
           setRefillSuccess(true);
           setIsRefilling(false);
-          triggerToast(`Wallet topped up successfully!`, 'success');
-          // Automatically close modal after success animation
-          setTimeout(() => {
+          triggerToast(`Wallet topped up! Placing your order...`, 'success');
+          // Close the refill modal, then auto-place the order with the new balance
+          setTimeout(async () => {
             setShowRefill(false);
             setRefillSuccess(false);
             setRefillAmount('');
-          }, 2000);
+            // Auto-retry order with the freshly topped-up balance
+            setIsProcessing(true);
+            await createOrderWithBalance('wallet', newBalance);
+          }, 1500);
         } catch (err) {
           console.error("Refill credit error:", err);
-          triggerToast("Payment succeeded, but failed to credit wallet.", "error");
+          triggerToast("Payment succeeded, but failed to credit wallet. Please try again.", "error");
           setIsRefilling(false);
         }
       },
@@ -565,11 +524,7 @@ export default function Checkout() {
     });
   };
 
-  useEffect(() => {
-    if (success) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  }, [success]);
+  // Success scroll effect removed to stay in place at the header level as requested.
 
   useEffect(() => {
     if (showRefill) {
@@ -734,43 +689,43 @@ export default function Checkout() {
       <motion.div 
         initial={{ opacity: 0 }} 
         animate={{ opacity: 1 }} 
-        className="min-h-screen pb-32 flex flex-col items-center justify-center p-6 text-center bg-[#050505] relative overflow-hidden"
+        className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 text-center bg-[#050505] overflow-y-auto"
       >
         <ConfettiGenerator />
         
-        <div className="relative z-10 max-w-[360px] w-full space-y-8 px-2">
-          <motion.div initial={{ y: -30, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
+        <div className="relative z-10 max-w-[340px] w-full space-y-4 px-1 mx-auto flex flex-col justify-center">
+          <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
             {/* Animated thumbs-up container with custom success icon */}
-            <div className="relative mx-auto w-24 h-24 mb-4 flex items-center justify-center">
+            <div className="relative mx-auto w-16 h-16 mb-2 flex items-center justify-center">
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: [0, 1.2, 1] }}
                 transition={{ duration: 0.6, ease: "easeOut" }}
-                className="absolute inset-0 bg-charistar-green/15 rounded-full border-2 border-charistar-green/30 shadow-[0_0_30px_rgba(163,198,68,0.25)]"
+                className="absolute inset-0 bg-charistar-green/15 rounded-full border-2 border-charistar-green/30 shadow-[0_0_20px_rgba(163,198,68,0.2)]"
               />
               <motion.div
                 initial={{ scale: 0, rotate: -45 }}
                 animate={{ scale: [0, 1.3, 1], rotate: [0, 15, -10, 0] }}
                 transition={{ delay: 0.2, duration: 0.8, type: "spring", stiffness: 200 }}
-                className="text-4xl z-10"
+                className="text-2xl z-10"
               >
                 👍
               </motion.div>
             </div>
             
-            <h1 className="text-2xl font-black text-white tracking-tight uppercase leading-snug">
+            <h1 className="text-lg font-black text-white tracking-tight uppercase leading-snug">
               Congratulation!<br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-charistar-green to-emerald-400">Your Payment is Successful</span>
             </h1>
-            <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest mt-2">Order received and currently preparing</p>
+            <p className="text-gray-500 text-[9px] uppercase font-bold tracking-widest mt-1">Order received and currently preparing</p>
           </motion.div>
 
           {/* 3D Ticket Receipt */}
           <div className="perspective-container" style={{ perspective: 1200 }}>
             <motion.div
-              initial={{ scale: 0.8, rotateX: 25, y: 50, opacity: 0 }}
-              animate={{ scale: 1, rotateX: [4, -4, 4], rotateY: [-3, 3, -3], y: [0, -6, 0], opacity: 1 }}
+              initial={{ scale: 0.8, rotateX: 25, y: 30, opacity: 0 }}
+              animate={{ scale: 1, rotateX: [4, -4, 4], rotateY: [-3, 3, -3], y: [0, -4, 0], opacity: 1 }}
               transition={{ y: { duration: 5, repeat: Infinity, ease: "easeInOut" }, rotateX: { duration: 6, repeat: Infinity, ease: "easeInOut" } }}
-              className="glass-panel p-6 rounded-[2.2rem] border border-white/10 relative shadow-[0_15px_40px_rgba(0,0,0,0.6)] bg-black/60 flex flex-col items-center overflow-hidden"
+              className="glass-panel p-4 rounded-[1.8rem] border border-white/10 relative shadow-[0_10px_30px_rgba(0,0,0,0.6)] bg-black/60 flex flex-col items-center overflow-hidden"
             >
               {/* Receipt Cut edges */}
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-white/10 to-transparent flex gap-1">
@@ -779,73 +734,73 @@ export default function Checkout() {
                 ))}
               </div>
 
-              <span className="text-gray-500 text-[9px] font-black uppercase tracking-[0.2em] mb-1">Order Receipt</span>
-              <h3 className="text-sm font-black text-white uppercase tracking-wider">Charistar Foods Company LTD.</h3>
+              <span className="text-gray-500 text-[8px] font-black uppercase tracking-[0.2em] mb-0.5">Order Receipt</span>
+              <h3 className="text-xs font-black text-white uppercase tracking-wider">Charistar Foods Company LTD.</h3>
               
-              <div className="w-full flex items-center gap-1.5 my-4">
+              <div className="w-full flex items-center gap-1.5 my-2.5">
                 <div className="flex-1 border-b border-dashed border-white/10"></div>
               </div>
 
-              <div className="w-full space-y-3.5 text-xs text-left">
+              <div className="w-full space-y-2 text-[11px] text-left">
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-500 font-bold uppercase tracking-wider text-[9px]">Receipt ID</span>
-                  <span className="text-white font-mono font-extrabold text-xs">#{createdOrderId?.slice(-8).toUpperCase() || '7A89DE9B'}</span>
+                  <span className="text-gray-500 font-bold uppercase tracking-wider text-[8px]">Receipt ID</span>
+                  <span className="text-white font-mono font-extrabold text-[11px]">#{createdOrderId?.slice(-8)?.toUpperCase() || '7A89DE9B'}</span>
                 </div>
                 <div className="flex justify-between items-start">
-                  <span className="text-gray-500 font-bold uppercase tracking-wider text-[9px]">Delivery to</span>
-                  <span className="text-white font-extrabold text-right max-w-[180px] truncate">{delAddress || 'Your Address'}</span>
+                  <span className="text-gray-500 font-bold uppercase tracking-wider text-[8px]">Delivery to</span>
+                  <span className="text-white font-extrabold text-right max-w-[170px] truncate">{delAddress || 'Your Address'}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-500 font-bold uppercase tracking-wider text-[9px]">Delivery Slot</span>
-                  <span className="text-white font-extrabold uppercase text-[10px] tracking-wider">
+                  <span className="text-gray-500 font-bold uppercase tracking-wider text-[8px]">Delivery Slot</span>
+                  <span className="text-white font-extrabold uppercase text-[9px] tracking-wider">
                     {scheduleType === 'custom' 
                       ? `Custom (${customTime})` 
-                      : (scheduleType === 'lunch' ? 'Lunch (10:00 AM - 2:00 PM)' : 'Dinner (3:00 PM - 8:00 PM)')}
+                      : (scheduleType === 'lunch' ? 'Lunch (10:00 - 14:00)' : 'Dinner (15:00 - 20:00)')}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-500 font-bold uppercase tracking-wider text-[9px]">Method</span>
-                  <span className="text-charistar-green font-extrabold uppercase text-[10px] tracking-wider">{paymentMethod === 'card' ? 'Debit Card' : 'Charistar Wallet'}</span>
+                  <span className="text-gray-500 font-bold uppercase tracking-wider text-[8px]">Method</span>
+                  <span className="text-charistar-green font-extrabold uppercase text-[9px] tracking-wider">{paymentMethod === 'card' ? 'Debit Card' : 'Charistar Wallet'}</span>
                 </div>
                 {paymentMethod === 'wallet' && (
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-500 font-bold uppercase tracking-wider text-[9px]">Remaining Balance</span>
-                    <span className="text-emerald-400 font-extrabold text-[10px] tracking-wider">₦{(currentUser?.walletBalance || 0).toLocaleString()}</span>
+                    <span className="text-gray-500 font-bold uppercase tracking-wider text-[8px]">Remaining Balance</span>
+                    <span className="text-emerald-400 font-extrabold text-[9px] tracking-wider">₦{remainingBalance.toLocaleString()}</span>
                   </div>
                 )}
 
-                <div className="pt-3.5 border-t border-dashed border-white/10 flex justify-between items-center">
-                  <span className="text-white font-black uppercase text-[10px] tracking-widest">Total Secured</span>
-                  <span className="text-charistar-green text-xl font-black">₦{finalTotal.toLocaleString()}</span>
+                <div className="pt-2.5 border-t border-dashed border-white/10 flex justify-between items-center">
+                  <span className="text-white font-black uppercase text-[9px] tracking-widest">Total Secured</span>
+                  <span className="text-charistar-green text-lg font-black">₦{paidAmount.toLocaleString()}</span>
                 </div>
               </div>
 
               {/* Barcode illustration */}
-              <div className="mt-6 flex flex-col items-center gap-1 opacity-45">
-                <div className="h-8 flex gap-[2px] items-center">
+              <div className="mt-4 flex flex-col items-center gap-0.5 opacity-45">
+                <div className="h-6 flex gap-[2px] items-center">
                   {[1,3,1,2,1,4,2,1,3,1,2,4,1,2,1,3,2,1,4,1,2].map((w, idx) => (
                     <div key={idx} className="bg-white h-full" style={{ width: w }}></div>
                   ))}
                 </div>
-                <span className="text-[7px] text-gray-500 font-mono">10238947293847293</span>
+                <span className="text-[6px] text-gray-500 font-mono">10238947293847293</span>
               </div>
             </motion.div>
           </div>
 
-          <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="space-y-3 pt-3">
+          <div className="space-y-2 pt-2">
             <button 
               onClick={() => navigate(`/track-order/${createdOrderId || 'demo'}`)} 
-              className="w-full h-13 bg-charistar-green text-black font-extrabold text-[13px] uppercase tracking-wider rounded-2xl flex items-center justify-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-[0_8px_20px_rgba(163,198,68,0.25)]"
+              className="w-full h-11 bg-charistar-green text-black font-extrabold text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 hover:scale-102 active:scale-98 transition-all shadow-[0_5px_15px_rgba(163,198,68,0.2)]"
             >
-              <Bike size={18} /> Track your Order
+              <Bike size={16} /> Track your Order
             </button>
             <button 
               onClick={() => navigate('/')} 
-              className="w-full h-12 bg-white/5 text-white font-black text-xs uppercase tracking-wider rounded-2xl flex items-center justify-center gap-2 hover:bg-white/10 active:scale-95 transition-all border border-white/5"
+              className="w-full h-10 bg-white/5 text-white font-black text-[11px] uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 hover:bg-white/10 active:scale-98 transition-all border border-white/5"
             >
               Order more Cravings!
             </button>
-          </motion.div>
+          </div>
         </div>
       </motion.div>
     );
@@ -1229,114 +1184,12 @@ export default function Checkout() {
                         <CreditCard size={20} />
                       </div>
                       <div className="text-left">
-                        <p className="text-xs font-black text-white uppercase tracking-wider">Direct Card Payment</p>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Pay directly with secure encryption</p>
+                        <p className="text-xs font-black text-white uppercase tracking-wider">Pay with Paystack</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-0.5">Secure online payment</p>
                       </div>
                     </div>
                     <CreditCard size={18} className={paymentMethod === 'card' ? 'text-charistar-green' : 'text-gray-500'} />
                   </div>
-
-                  {/* Inline Credit Card Form Fields */}
-                  {paymentMethod === 'card' && (
-                    <motion.div 
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="overflow-hidden space-y-4 pt-2"
-                    >
-                      <CreditCardMockup 
-                        number={cardNumber}
-                        name={cardName}
-                        expiry={cardExpiry}
-                        cvv={cardCVV}
-                        focused={cardFocused}
-                      />
-                      
-                      <div className="space-y-3 px-1">
-                        <div className="charistar-input-group">
-                          <CreditCard size={16} className="text-gray-500" />
-                          <div className="w-full">
-                            <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest block mb-0.5">Card Number</label>
-                            <input 
-                              type="tel"
-                              inputMode="numeric"
-                              placeholder="0000 0000 0000 0000"
-                              value={cardNumber}
-                              onFocus={() => setCardFocused('number')}
-                              onBlur={() => setCardFocused('')}
-                              onChange={(e) => {
-                                const val = e.target.value.replace(/[^\d]/g, '').slice(0, 16);
-                                const formatted = val.replace(/(.{4})/g, '$1 ').trim();
-                                setCardNumber(formatted);
-                              }}
-                              className="bg-transparent border-none outline-none text-white font-bold text-xs w-full py-0.5"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="charistar-input-group">
-                          <User size={16} className="text-gray-500" />
-                          <div className="w-full">
-                            <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest block mb-0.5">Cardholder Name</label>
-                            <input 
-                              type="text"
-                              placeholder="Name on Card"
-                              value={cardName}
-                              onFocus={() => setCardFocused('name')}
-                              onBlur={() => setCardFocused('')}
-                              onChange={(e) => setCardName(e.target.value.toUpperCase())}
-                              className="bg-transparent border-none outline-none text-white font-bold text-xs w-full py-0.5"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="charistar-input-group">
-                            <Ticket size={16} className="text-gray-500" />
-                            <div className="w-full">
-                              <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest block mb-0.5">Expiry Date</label>
-                              <input 
-                                type="tel"
-                                inputMode="numeric"
-                                placeholder="MM/YY"
-                                value={cardExpiry}
-                                onFocus={() => setCardFocused('expiry')}
-                                onBlur={() => setCardFocused('')}
-                                onChange={(e) => {
-                                  let val = e.target.value.replace(/[^\d]/g, '').slice(0, 4);
-                                  if (val.length > 2) {
-                                    val = val.slice(0, 2) + '/' + val.slice(2);
-                                  }
-                                  setCardExpiry(val);
-                                }}
-                                className="bg-transparent border-none outline-none text-white font-bold text-xs w-full py-0.5"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="charistar-input-group">
-                            <Lock size={16} className="text-gray-500" />
-                            <div className="w-full">
-                              <label className="text-[9px] font-black text-gray-500 uppercase tracking-widest block mb-0.5">CVV</label>
-                              <input 
-                                type="tel"
-                                inputMode="numeric"
-                                placeholder="123"
-                                value={cardCVV}
-                                onFocus={() => setCardFocused('cvv')}
-                                onBlur={() => setCardFocused('')}
-                                onChange={(e) => {
-                                  const val = e.target.value.replace(/[^\d]/g, '').slice(0, 3);
-                                  setCardCVV(val);
-                                }}
-                                className="bg-transparent border-none outline-none text-white font-bold text-xs w-full py-0.5"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
                 </div>
               </div>
           </div>
@@ -1405,19 +1258,19 @@ export default function Checkout() {
       </AnimatePresence>
 
       {/* Refill Wallet Overlay Modal */}
+      {/* Backdrop: static (no opacity animation so it never shows as blank black) */}
+      {showRefill && (
+        <div className="fixed inset-0 z-50 bg-[#000000]/85 backdrop-blur-md" />
+      )}
       <AnimatePresence>
         {showRefill && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-[#000000]/85 backdrop-blur-md"
-          >
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-6 pointer-events-none">
             <motion.div
-              initial={{ scale: 0.9, y: 30 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 30 }}
-              className="glass-panel p-6 rounded-[2.5rem] border border-white/10 bg-[#0a0a0a]/95 shadow-[0_20px_50px_rgba(0,0,0,0.8)] max-w-sm w-full relative overflow-hidden text-center flex flex-col gap-5 text-white"
+              initial={{ scale: 0.85, y: 40, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.9, y: 30, opacity: 0 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 280 }}
+              className="glass-panel p-6 rounded-[2.5rem] border border-white/10 bg-[#0a0a0a] shadow-[0_20px_60px_rgba(0,0,0,0.9)] max-w-sm w-full relative overflow-hidden text-center flex flex-col gap-5 text-white pointer-events-auto"
             >
               {/* Top accent line */}
               <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-red-500 via-charistar-green to-emerald-400"></div>
@@ -1496,7 +1349,7 @@ export default function Checkout() {
               <div className="flex flex-col gap-2 pt-2">
                 <button
                   onClick={handleRefillWallet}
-                  disabled={isRefilling || !refillAmount || parseFloat(refillAmount) <= 0}
+                  disabled={isRefilling || !refillAmount || Math.floor(parseFloat(refillAmount)) <= 0}
                   className="h-12 bg-charistar-green text-black font-black uppercase text-xs tracking-wider rounded-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_5px_15px_rgba(163,198,68,0.2)] disabled:opacity-50"
                 >
                   {isRefilling ? (
@@ -1518,170 +1371,11 @@ export default function Checkout() {
                 </button>
               </div>
             </motion.div>
-          </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
-      {/* Secure AJAX Payment Loader Overlay Modal */}
-      <AnimatePresence>
-        {showAjaxModal && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-[#000000]/90 backdrop-blur-md"
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 30 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 30 }}
-              className="glass-panel p-8 rounded-[2.5rem] border border-white/10 bg-[#0c0c0c]/95 shadow-[0_20px_50px_rgba(0,0,0,0.8)] max-w-sm w-full relative overflow-hidden text-center flex flex-col gap-6 text-white animate-scaleUp"
-            >
-              {/* Animated top glow bar */}
-              <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-charistar-green via-emerald-400 to-[#A3C644]"></div>
 
-              {/* AJAX Processing Steps View */}
-              {ajaxPaymentStep < 4 && (
-                <div className="space-y-6 py-4">
-                  {/* Rotating secure shield spinner */}
-                  <div className="relative mx-auto w-16 h-16 flex items-center justify-center">
-                    <motion.div 
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                      className="absolute inset-0 border-t-2 border-r-2 border-charistar-green border-b-transparent border-l-transparent rounded-full"
-                    />
-                    <div className="w-10 h-10 rounded-full bg-charistar-green/10 flex items-center justify-center text-charistar-green">
-                      <Lock size={18} className="animate-pulse" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <h3 className="text-base font-black text-white uppercase tracking-tight">Processing Payment</h3>
-                    <p className="text-gray-400 text-[10px] uppercase font-bold tracking-widest animate-pulse">
-                      Do not refresh or close this window
-                    </p>
-                  </div>
-
-                  {/* Step status logs */}
-                  <div className="text-left bg-black/40 rounded-2xl p-4 border border-white/5 space-y-3 font-mono text-[9px] text-gray-500">
-                    <div className={`flex items-center gap-2 ${ajaxPaymentStep >= 1 ? 'text-charistar-green font-bold' : ''}`}>
-                      <span>{ajaxPaymentStep >= 1 ? '✓' : '○'}</span>
-                      <span>SECURE SSL/TLS CHANNEL INITIATED</span>
-                    </div>
-                    <div className={`flex items-center gap-2 ${ajaxPaymentStep >= 2 ? 'text-charistar-green font-bold' : ''}`}>
-                      <span>{ajaxPaymentStep >= 2 ? '✓' : '○'}</span>
-                      <span>CARD CREDENTIALS VERIFIED & ENCRYPTED</span>
-                    </div>
-                    <div className={`flex items-center gap-2 ${ajaxPaymentStep >= 3 ? 'text-charistar-green font-bold' : ''}`}>
-                      <span>{ajaxPaymentStep >= 3 ? '✓' : '○'}</span>
-                      <span>COMMUNICATING WITH CARD GATEWAY...</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* OTP Input Step */}
-              {ajaxPaymentStep === 4 && (
-                <div className="space-y-5">
-                  <div className="w-12 h-12 mx-auto rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                    <CheckCircle size={20} className="animate-pulse" />
-                  </div>
-                  
-                  <div className="space-y-1">
-                    <h3 className="text-md font-black text-white uppercase tracking-tight">3D-Secure Verification</h3>
-                    <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider leading-relaxed px-2">
-                      Enter the 6-digit verification code sent to the phone number ending in *{delPhone.slice(-4) || '5678'}
-                    </p>
-                  </div>
-
-                  {otpError && (
-                    <div className="bg-red-500/10 text-red-400 p-2 rounded-xl text-[10px] font-bold border border-red-500/20 text-center animate-shake">
-                      {otpError}
-                    </div>
-                  )}
-
-                  <form onSubmit={handleVerifyOtp} className="space-y-4">
-                    <input 
-                      type="tel"
-                      inputMode="numeric"
-                      maxLength={6}
-                      required
-                      placeholder="e.g. 123456"
-                      value={otpInput}
-                      onChange={e => setOtpInput(e.target.value.replace(/[^\d]/g, ''))}
-                      className="w-full bg-black/60 text-white font-mono text-lg font-black tracking-[0.5em] text-center py-3 rounded-xl border border-white/10 outline-none focus:border-charistar-green/50 transition-all placeholder:tracking-normal placeholder:font-sans placeholder:text-gray-600"
-                    />
-
-                    <button
-                      type="submit"
-                      disabled={otpLoading || otpInput.length < 6}
-                      className="w-full h-12 bg-charistar-green text-black font-black uppercase text-xs tracking-wider rounded-xl flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
-                    >
-                      {otpLoading ? (
-                        <Loader2 className="animate-spin text-black" size={14} strokeWidth={3} />
-                      ) : 'Submit OTP'}
-                    </button>
-                  </form>
-                </div>
-              )}
-
-              {/* Final Settlement Steps */}
-              {ajaxPaymentStep >= 5 && (
-                <div className="space-y-6 py-4">
-                  <div className="relative mx-auto w-16 h-16 flex items-center justify-center">
-                    <motion.div 
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                      className="absolute inset-0 border-t-2 border-r-2 border-emerald-400 border-b-transparent border-l-transparent rounded-full"
-                    />
-                    <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                      <Sparkles size={18} className="animate-pulse" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <h3 className="text-base font-black text-white uppercase tracking-tight">Settling Transaction</h3>
-                    <p className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">
-                      Processing final ledger entries...
-                    </p>
-                  </div>
-
-                  <div className="text-left bg-black/40 rounded-2xl p-4 border border-white/5 space-y-3 font-mono text-[9px] text-gray-500">
-                    <div className="flex items-center gap-2 text-charistar-green font-bold">
-                      <span>✓</span>
-                      <span>3D-SECURE SIGNATURE VERIFIED</span>
-                    </div>
-                    <div className={`flex items-center gap-2 ${ajaxPaymentStep >= 5 ? 'text-charistar-green font-bold' : ''}`}>
-                      <span>{ajaxPaymentStep >= 5 ? '✓' : '○'}</span>
-                      <span>SETTLING PAYMENT WITH GATEWAY...</span>
-                    </div>
-                    <div className={`flex items-center gap-2 ${ajaxPaymentStep >= 6 ? 'text-charistar-green font-bold' : ''}`}>
-                      <span>{ajaxPaymentStep >= 6 ? '✓' : '○'}</span>
-                      <span>CREATING DATABASE ORDER RECORD...</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Cancel Button */}
-              {ajaxPaymentStep <= 4 && (
-                <button
-                  onClick={() => {
-                    setShowAjaxModal(false);
-                    setIsProcessing(false);
-                    setAjaxPaymentStep(0);
-                    document.body.style.overflow = '';
-                    triggerToast('Payment cancelled.', 'error');
-                  }}
-                  className="w-full py-3 bg-white/5 text-gray-400 hover:text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-all border border-white/5 mt-2"
-                >
-                  Cancel Payment
-                </button>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
     </motion.div>
   );

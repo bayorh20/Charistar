@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Bike, Loader, Clock, MapPin, ChefHat } from 'lucide-react';
 import { useActiveOrder } from '../hooks/useActiveOrder';
+import { STATUS_NOTIFICATIONS } from '../data/statusNotifications';
 
 export default function ActiveOrderBanner() {
   const { activeOrder, loading } = useActiveOrder();
@@ -11,49 +12,52 @@ export default function ActiveOrderBanner() {
   if (loading || !activeOrder) return null;
 
   const getStatusDetails = (status) => {
-    switch (status) {
+    const s = (status || 'pending').toLowerCase();
+    const info = STATUS_NOTIFICATIONS[s] || STATUS_NOTIFICATIONS['pending'];
+    switch (s) {
       case 'pending':
         return { 
           icon: <Clock size={18} className="text-yellow-400 animate-pulse" />, 
-          text: 'Order Received', 
-          desc: 'Waiting for kitchen confirmation...',
+          text: info.bannerTitle, 
+          desc: info.bannerDesc,
           progress: 15,
           colorClass: 'from-[#050505] via-[#0c0c05] to-yellow-500/5',
           borderClass: 'border-yellow-500/30 shadow-[0_0_20px_rgba(234,179,8,0.06)]',
-          badgeText: 'Awaiting Approval',
+          badgeText: info.badgeLabel,
           badgeColor: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20'
         };
+      case 'preparing':
       case 'processing':
         return { 
           icon: <ChefHat size={18} className="text-charistar-green animate-bounce" />, 
-          text: 'Kitchen Prep', 
-          desc: 'Your parfait is being layered fresh!',
+          text: info.bannerTitle, 
+          desc: info.bannerDesc,
           progress: 45,
           colorClass: 'from-[#050505] via-[#050c05] to-charistar-green/5',
           borderClass: 'border-charistar-green/30 shadow-[0_0_20px_rgba(163,198,68,0.06)]',
-          badgeText: 'Preparing Now',
+          badgeText: info.badgeLabel,
           badgeColor: 'bg-[#A3C644]/10 text-charistar-green border-[#A3C644]/20'
         };
       case 'dispatched':
         return { 
           icon: <Bike size={18} className="text-purple-400 animate-pulse" />, 
-          text: 'Out for Delivery', 
-          desc: 'Courier is en route to you!',
+          text: info.bannerTitle, 
+          desc: info.bannerDesc,
           progress: 80,
           colorClass: 'from-[#050505] via-[#0c050f] to-purple-500/5',
           borderClass: 'border-purple-500/30 shadow-[0_0_20px_rgba(168,85,247,0.06)]',
-          badgeText: 'Rider Transit',
+          badgeText: info.badgeLabel,
           badgeColor: 'bg-purple-500/10 text-purple-400 border-purple-500/20'
         };
       default:
         return { 
           icon: <Loader size={18} className="text-gray-400 animate-spin" />, 
-          text: 'Processing', 
-          desc: 'Updating status...',
+          text: info.bannerTitle, 
+          desc: info.bannerDesc,
           progress: 10,
           colorClass: 'from-[#050505] to-white/5',
           borderClass: 'border-white/10',
-          badgeText: 'Updating',
+          badgeText: info.badgeLabel,
           badgeColor: 'bg-white/10 text-white border-white/10'
         };
     }

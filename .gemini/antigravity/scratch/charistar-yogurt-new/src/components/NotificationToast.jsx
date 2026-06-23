@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, CheckCircle, Package, Truck, Utensils, X } from 'lucide-react';
+import { Bell, CheckCircle, Truck, Utensils, X } from 'lucide-react';
 import { useActiveOrder } from '../hooks/useActiveOrder';
 
 const getUniqueNotifId = () => Date.now() + Math.random();
@@ -10,15 +10,43 @@ export default function NotificationToast() {
   const [notifications, setNotifications] = useState([]);
   const prevStatusRef = useRef(null);
 
+  const removeNotification = useCallback((id) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  }, []);
+
+  // Defined before the useEffect that calls it
+  const triggerNotification = useCallback((order) => {
+    if (navigator.vibrate) {
+      navigator.vibrate([100, 50, 100]);
+    }
+    try {
+      const audio = new Audio('/notification.mp3');
+      audio.volume = 0.5;
+      audio.play().catch(() => {});
+    } catch (e) {}
+
+    const newNotif = {
+      id: getUniqueNotifId(),
+      status: order.status,
+      orderId: order.id
+    };
+
+    setNotifications(prev => [newNotif, ...prev].slice(0, 3));
+
+    setTimeout(() => {
+      removeNotification(newNotif.id);
+    }, 5000);
+  }, [removeNotification]);
+
   useEffect(() => {
     if (activeOrder && prevStatusRef.current !== activeOrder.status) {
       if (prevStatusRef.current !== null) {
-        // Status changed! Trigger notification
+        // Status changed — trigger notification
         triggerNotification(activeOrder);
       }
       prevStatusRef.current = activeOrder.status;
     }
-  }, [activeOrder]);
+  }, [activeOrder, triggerNotification]);
 
   useEffect(() => {
     const handleFCMMessage = (e) => {
@@ -53,35 +81,7 @@ export default function NotificationToast() {
     return () => window.removeEventListener('fcm-message-received', handleFCMMessage);
   }, []);
 
-  function triggerNotification(order) {
-    if (navigator.vibrate) {
-      navigator.vibrate([100, 50, 100]); // double buzz
-    }
-
-    // Play a subtle sound
-    try {
-      const audio = new Audio('/notification.mp3'); // We'll assume a file exists or it will just silently fail
-      audio.volume = 0.5;
-      audio.play().catch(e => {});
-    } catch(e) {}
-
-    const newNotif = {
-      id: getUniqueNotifId(),
-      status: order.status,
-      orderId: order.id
-    };
-
-    setNotifications(prev => [newNotif, ...prev].slice(0, 3)); // Keep max 3
-
-    // Auto dismiss after 5 seconds
-    setTimeout(() => {
-      removeNotification(newNotif.id);
-    }, 5000);
-  }
-
-  function removeNotification(id) {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  }
+  // triggerNotification and removeNotification are defined above (useCallback)
 
   const getStatusContent = (status) => {
     switch (status) {

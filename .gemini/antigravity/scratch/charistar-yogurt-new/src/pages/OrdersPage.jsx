@@ -5,6 +5,7 @@ import { Package, Navigation, ChevronRight, Clock, CheckCircle, Truck, XCircle, 
 import { collection, query, where, orderBy, onSnapshot, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { STATUS_NOTIFICATIONS } from '../data/statusNotifications';
 
 const formatDate = (dateVal) => {
   if (!dateVal) return '';
@@ -17,20 +18,23 @@ const formatDate = (dateVal) => {
 };
 
 const StatusBadge = ({ status }) => {
+  const statusLower = (status || 'pending').toLowerCase();
+  const info = STATUS_NOTIFICATIONS[statusLower] || STATUS_NOTIFICATIONS['pending'];
   const statusMap = {
-    pending:    { label: 'Pending',    color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', icon: Clock },
-    confirmed:  { label: 'Confirmed',  color: 'bg-blue-500/20 text-blue-400 border-blue-500/30',       icon: CheckCircle },
-    preparing:  { label: 'Preparing',  color: 'bg-orange-500/20 text-orange-400 border-orange-500/30', icon: Package },
-    dispatched: { label: 'On the Way', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30', icon: Truck },
-    delivered:  { label: 'Delivered',  color: 'bg-charistar-green/20 text-charistar-green border-charistar-green/30', icon: CheckCircle },
-    cancelled:  { label: 'Cancelled',  color: 'bg-red-500/20 text-red-400 border-red-500/30',          icon: XCircle },
+    pending:    { color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', icon: Clock },
+    confirmed:  { color: 'bg-blue-500/20 text-blue-400 border-blue-500/30',       icon: CheckCircle },
+    preparing:  { color: 'bg-orange-500/20 text-orange-400 border-orange-500/30', icon: Package },
+    processing: { color: 'bg-orange-500/20 text-orange-400 border-orange-500/30', icon: Package },
+    dispatched: { color: 'bg-purple-500/20 text-purple-400 border-purple-500/30', icon: Truck },
+    delivered:  { color: 'bg-charistar-green/20 text-charistar-green border-charistar-green/30', icon: CheckCircle },
+    cancelled:  { color: 'bg-red-500/20 text-red-400 border-red-500/30',          icon: XCircle },
   };
-  const s = statusMap[status] || statusMap['pending'];
+  const s = statusMap[statusLower] || statusMap['pending'];
   const Icon = s.icon;
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${s.color}`}>
       <Icon size={9} strokeWidth={2.5} />
-      {s.label}
+      {info.badgeLabel}
     </span>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Star, ShoppingBag, MapPin, Check } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 
@@ -7,11 +7,11 @@ export default function MorphingProductModal({ product, isOpen, onClose }) {
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
+  // DOM side effects: scroll lock
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
       window.__lenis?.stop();
-      setQuantity(1); // Reset quantity when opened
     } else {
       document.body.style.overflow = '';
       window.__lenis?.start();
@@ -20,6 +20,11 @@ export default function MorphingProductModal({ product, isOpen, onClose }) {
       document.body.style.overflow = '';
       window.__lenis?.start();
     };
+  }, [isOpen]);
+
+  // State reset: runs after DOM effect, only when modal opens
+  useEffect(() => {
+    if (isOpen) setQuantity(1);
   }, [isOpen]);
 
   if (!product) return null;

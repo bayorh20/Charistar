@@ -19,12 +19,12 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Products: Anyone can view, admin can write
+    // Products: Anyone can read, only admin can write
     match /products/{productId} {
       allow read: if true;
       allow write: if isAdmin();
 
-      // Product Reviews: Anyone can read, authenticated users can write
+      // Product Reviews: Anyone can read, authenticated users can write reviews
       match /reviews/{reviewId} {
         allow read: if true;
         allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
@@ -32,66 +32,71 @@ service cloud.firestore {
       }
     }
 
-    // Categories: Anyone can view, admin can write
-    match /categories/{categoryId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // Hero Slides: Anyone can view, admin can write
-    match /slides/{slideId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // Homepage Sections: Anyone can read, admin can write
-    match /homepage_sections/{sectionId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
-    // Marketing Campaigns: Admin access only
-    match /campaigns/{campaignId} {
-      allow read, write: if isAdmin();
-    }
-
-    // Users Profiles
+    // Users Profiles: Secure read and write permissions
     match /users/{userId} {
-      allow read: if isAuthenticated(); // Admins and dispatchers need to list/read profiles
+      // Only the owner or an admin can read individual user profiles
+      allow read: if isOwner(userId) || isAdmin();
       
-      // Allow signup welcome promotional balance (up to 10000) and default role 'user'
+      // Allow signup with default role 'user' and initial wallet balance limits
       allow create: if isAuthenticated() 
         && (!request.resource.data.keys().hasAll(['role']) || request.resource.data.role == 'user')
         && (!request.resource.data.keys().hasAll(['walletBalance']) || request.resource.data.walletBalance <= 10000);
         
-      // Users can edit their details, including wallet balance. Admins have full access.
-      allow update: if isOwner(userId) || isAdmin();
+      // Prevent privilege escalation: Users can edit details but CANNOT modify their own 'role' field.
+      allow update: if isAdmin() || (
+        isOwner(userId) 
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))
+      );
       
-      // Transactions: Owner can read/write, admin can read/write
+      // Transactions subcollection
       match /transactions/{txId} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
 
-      // Favorites: Owner can read/write, admin can read
+      // Favorites subcollection
       match /favorites/{favoriteId} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
     }
 
-    // Orders Collection
+    // Orders Collection: Supports both authenticated users and guest checkouts
     match /orders/{orderId} {
-      allow get: if true; // Guest and registered user order details page access
-      allow list: if isAuthenticated(); // Admins and dispatchers listing orders
+      allow get: if true; // Allows order details tracking page lookup by ID (both guests and registered users)
       
-      // Users can submit orders with status 'pending', but cannot mark them as priceValidated
-      allow create: if isAuthenticated() 
+      // Only administrators or the order owner can list orders
+      allow list: if isAdmin() || (
+        isAuthenticated() && resource.data.userId == request.auth.uid
+      );
+      
+      // Support creation for both registered users and guests
+      allow create: if (request.resource.data.userId == 'guest') || (
+        isAuthenticated() 
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.status == 'pending'
-        && (!request.resource.data.keys().hasAll(['priceValidated']) || request.resource.data.priceValidated == false);
+        && (!request.resource.data.keys().hasAll(['priceValidated']) || request.resource.data.priceValidated == false)
+      );
         
-      // Only admins can update order status client-side
+      // Only administrators can update order details client-side
       allow update: if isAdmin();
       allow delete: if false;
+    }
+
+    // Guests Collection: Captures guest details for order routing & marketing leads
+    match /guests/{guestId} {
+      allow create: if true;
+      allow read, write: if isAdmin();
+    }
+
+    // Slides Collection: Anyone can read, admins can modify
+    match /slides/{slideId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Homepage Sections Collection: Anyone can read, admins can modify
+    match /homepage_sections/{sectionId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }

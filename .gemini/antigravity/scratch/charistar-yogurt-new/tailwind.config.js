@@ -25,6 +25,7 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
+        display: ['Outfit', 'sans-serif'],
       },
       boxShadow: {
         'card': '0 10px 40px -10px rgba(0,0,0,0.5)',
@@ -35,11 +36,16 @@ export default {
         shimmer: 'shimmer 2.5s linear infinite',
         'spin-slow': 'spin 12s linear infinite',
         'reverse-spin': 'reverse-spin 15s linear infinite',
+        'float': 'float 6s ease-in-out infinite',
       },
       keyframes: {
         'reverse-spin': {
           from: { transform: 'rotate(360deg)' },
         },
+        'float': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10px)' },
+        }
       },
       transitionDuration: {
         '0': '0ms',

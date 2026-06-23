@@ -120,33 +120,25 @@ export function ThemeProvider({ children }) {
     }
   });
 
-  const [isLowEndDevice, setIsLowEndDevice] = useState(false);
-  const [isPromptOpen, setIsPromptOpen] = useState(false);
-
-  // Performance profiling on mount
-  useEffect(() => {
+  // Detect low-end device on mount and apply class + override animations if needed
+  const [isLowEndDevice] = useState(() => {
     try {
-      const memory = navigator.deviceMemory; // GB
-      const cores = navigator.hardwareConcurrency; // logical processors
+      const memory = navigator.deviceMemory;
+      const cores = navigator.hardwareConcurrency;
       const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-      
       const isSlowNetwork = connection && (connection.saveData || ['2g', '3g'].includes(connection.effectiveType));
       const lowEnd = (memory && memory <= 2) || (cores && cores <= 4) || isSlowNetwork;
-      
       if (lowEnd) {
-        setIsLowEndDevice(true);
-        const root = document.documentElement;
-        root.classList.add('low-performance');
-        // Auto-disable animations for low-end hardware if the user hasn't explicitly set it
-        const storedAnim = localStorage.getItem('charistar_animations_enabled');
-        if (storedAnim === null) {
-          setAnimationsEnabled(false);
-        }
+        document.documentElement.classList.add('low-performance');
       }
+      return !!lowEnd;
     } catch (e) {
       console.warn('[PerformanceProfiling] Bypassed:', e);
+      return false;
     }
-  }, []);
+  });
+
+  const [isPromptOpen, setIsPromptOpen] = useState(false);
 
   useEffect(() => {
     applyTheme(theme);

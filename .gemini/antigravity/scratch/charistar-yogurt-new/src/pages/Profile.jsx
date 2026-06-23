@@ -9,7 +9,7 @@ import {
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, query, where, orderBy, getDocs, doc, updateDoc, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, doc, updateDoc, setDoc, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { payWithPaystack } from '../utils/paystack';
 
@@ -104,6 +104,16 @@ export default function Profile() {
   const [authLoading, setAuthLoading] = useState(false);
   const [justLoggedIn, setJustLoggedIn] = useState(false);
 
+  // Custom Toast State
+  const [toast, setToast] = useState({ show: false, msg: '', type: 'error' });
+
+  const triggerToast = (msg, type = 'error') => {
+    setToast({ show: true, msg, type });
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, show: false }));
+    }, 3200);
+  };
+
   // Data streams and Firestore triggers
   useEffect(() => {
     if (!currentUser) return;
@@ -190,77 +200,73 @@ export default function Profile() {
 
   const handleTopUpSubmit = async (e) => {
     e.preventDefault();
-    const amountVal = parseFloat(topUpAmount);
+    const amountVal = Math.floor(parseFloat(topUpAmount));
     if (isNaN(amountVal) || amountVal <= 0) {
-      alert("Please enter a valid top-up amount.");
+      triggerToast("Please enter a valid top-up amount.", "error");
       return;
     }
     
     setTopUpLoading(true);
-    try {
-      const reference = 'topup_' + Date.now();
-      const nameToUse = currentUser?.displayName || 'customer';
-      const userEmail = `${nameToUse.trim().replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'customer'}@charistaryogurt.com`;
-      
-      await payWithPaystack({
-        email: userEmail,
-        amount: amountVal,
-        reference: reference,
-        onSuccess: async (response) => {
-          try {
-            const userRef = doc(db, 'users', currentUser.uid);
-            await updateDoc(userRef, {
-              walletBalance: (currentUser.walletBalance || 0) + amountVal
-            });
-            
-            await addDoc(collection(db, 'users', currentUser.uid, 'transactions'), {
-              type: 'credit',
-              amount: amountVal,
-              description: `Top-Up via Paystack Card`,
-              createdAt: serverTimestamp()
-            });
-            
-            setIsTopUpOpen(false);
-            setTopUpAmount('');
-            setTopUpLoading(false);
-            alert(`Wallet topped up successfully with ₦${amountVal.toLocaleString()}! 🔋`);
-          } catch (writeErr) {
-            console.error("Failed to credit wallet balance after payment:", writeErr);
-            alert("Payment was successful, but we failed to credit your wallet balance. Please contact support.");
-            setTopUpLoading(false);
-          }
-        },
-        onCancel: () => {
-          alert("Top-up payment cancelled.");
+    const reference = 'topup_' + Date.now();
+    const nameToUse = currentUser?.displayName || 'customer';
+    const userEmail = `${nameToUse.trim().replace(/[^a-zA-Z0-9]/g, '').toLowerCase() || 'customer'}@charistaryogurt.com`;
+    
+    // payWithPaystack is synchronous — do NOT await it.
+    // The onSuccess / onCancel callbacks handle result asynchronously.
+    payWithPaystack({
+      email: userEmail,
+      amount: amountVal,
+      reference: reference,
+      onSuccess: async (response) => {
+        try {
+          const userRef = doc(db, 'users', currentUser.uid);
+          const currentBalance = Number(currentUser.walletBalance || 0);
+          const newBalance = isNaN(currentBalance) ? amountVal : currentBalance + amountVal;
+          await setDoc(userRef, { walletBalance: newBalance }, { merge: true });
+          
+          await addDoc(collection(db, 'users', currentUser.uid, 'transactions'), {
+            type: 'credit',
+            amount: amountVal,
+            description: `Top-Up via Paystack Card`,
+            createdAt: serverTimestamp()
+          });
+          
+          setIsTopUpOpen(false);
+          setTopUpAmount('');
+          setTopUpLoading(false);
+          triggerToast(`Wallet topped up with ₦${amountVal.toLocaleString()}! 🔋`, "success");
+        } catch (writeErr) {
+          console.error("Failed to credit wallet balance after payment:", writeErr);
+          triggerToast("Payment successful, but failed to credit wallet. Contact support.", "error");
           setTopUpLoading(false);
         }
-      });
-      
-    } catch (err) {
-      console.error("Top-up failed:", err);
-      alert("Failed to initialize top-up payment.");
-      setTopUpLoading(false);
-    }
+      },
+      onCancel: () => {
+        triggerToast("Top-up cancelled.", "error");
+        setTopUpLoading(false);
+      }
+    });
   };
+
 
   const handleEditProfileSubmit = async (e) => {
     e.preventDefault();
     if (!editName.trim()) {
-      alert("Display Name cannot be empty.");
+      triggerToast("Display Name cannot be empty.", "error");
       return;
     }
     setEditLoading(true);
     try {
       const userRef = doc(db, 'users', currentUser.uid);
-      await updateDoc(userRef, {
+      await setDoc(userRef, {
         displayName: editName,
         phone: editPhone
-      });
+      }, { merge: true });
       setIsEditProfileOpen(false);
-      alert("Profile updated successfully! ✨");
+      triggerToast("Profile updated successfully! ✨", "success");
     } catch (err) {
       console.error("Failed to update profile:", err);
-      alert("Could not update profile. Try again.");
+      triggerToast("Could not update profile. Try again.", "error");
     } finally {
       setEditLoading(false);
     }
@@ -278,14 +284,14 @@ export default function Profile() {
         address: newAddressText.trim(),
         deliveryNote: newAddressNote.trim(),
       }];
-      await updateDoc(userRef, { savedAddresses: updated });
+      await setDoc(userRef, { savedAddresses: updated }, { merge: true });
       setNewAddressName('');
       setNewAddressText('');
       setNewAddressNote('');
       setIsAddAddressOpen(false);
     } catch (err) {
       console.error('Failed to save location:', err);
-      alert('Could not save address. Try again.');
+      triggerToast("Could not save address. Try again.", "error");
     } finally {
       setSavingAddress(false);
     }
@@ -296,9 +302,9 @@ export default function Profile() {
       const userRef = doc(db, 'users', currentUser.uid);
       const existingAddresses = currentUser.savedAddresses || [];
       const updated = existingAddresses.filter((_, idx) => idx !== index);
-      await updateDoc(userRef, {
+      await setDoc(userRef, {
         savedAddresses: updated
-      });
+      }, { merge: true });
     } catch (err) {
       console.error("Failed to delete saved location:", err);
     }
@@ -409,6 +415,27 @@ export default function Profile() {
   // Render Logged in layout view
   return (
     <div className="min-h-screen bg-charistar-dark font-sans relative overflow-x-hidden pb-32">
+      
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast.show && (
+          <motion.div 
+            initial={{ opacity: 0, y: -50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -50, scale: 0.9 }}
+            className="fixed top-24 left-6 right-6 z-[10000] pointer-events-none flex justify-center"
+          >
+            <div className={`px-5 py-4 rounded-2xl border backdrop-blur-[30px] flex items-center gap-3 shadow-xl max-w-sm w-full pointer-events-auto ${
+              toast.type === 'success' 
+                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                : 'bg-red-500/10 border-red-500/30 text-red-400'
+            }`}>
+              {toast.type === 'success' ? <CheckCircle size={18} className="flex-shrink-0" /> : <AlertCircle size={18} className="flex-shrink-0" />}
+              <span className="text-[11px] font-black uppercase tracking-wider leading-snug">{toast.msg}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* Dynamic Gradient Cover Photo */}
       <div className="absolute top-0 left-0 right-0 h-48 bg-gradient-to-br from-charistar-green/20 via-charistar-dark to-indigo-500/10 -z-10">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo, useCallback } from 'react';
+import React, { useState, useEffect, memo, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Plus, X } from 'lucide-react';
@@ -14,6 +14,7 @@ const ShopProductCard = memo(({ product, onAddToCart, onNavigate }) => {
       const img = new Image();
       img.src = product.image || product.img;
     }
+    import('./ProductDetails').catch(() => {});
   };
 
   const style = product.displayStyle || 'Standard';
@@ -73,44 +74,37 @@ const ShopProductCard = memo(({ product, onAddToCart, onNavigate }) => {
 
   return (
     <div 
-      className={`flex flex-col group will-change-transform animate-fadeIn ${spanClass}`}
+      className={`flex flex-col group will-change-transform animate-fadeIn cursor-pointer ${spanClass}`}
       onMouseEnter={handlePreload}
       onTouchStart={handlePreload}
+      onClick={() => onNavigate(product.id)}
     >
-      <div 
-        onClick={() => onNavigate(product.id)}
-        className="block relative cursor-pointer"
-      >
-        {/* Product Image Frame */}
-        <div className={`w-full rounded-[2rem] overflow-hidden bg-[#0a0a0a] relative mb-4 shadow-[0_15px_35px_-10px_rgba(0,0,0,0.4)] ${isHighlight ? 'border-2 border-yellow-400/50 shadow-[0_0_20px_rgba(250,204,21,0.2)]' : 'border border-white/5'} ${isBanner ? 'aspect-[21/9]' : isFeatured ? 'aspect-square' : 'aspect-[4/5]'}`}>
-          <img 
-            src={product.image || product.img} 
-            alt={product.title} 
-            loading="lazy"
-            decoding="async"
-            className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 ease-out" 
-          />
-          
-          {/* Floating Add to Cart Button */}
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddToCart(product);
-            }}
-            className="absolute bottom-3 right-3 w-10 h-10 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white hover:bg-charistar-green hover:text-black hover:border-transparent hover:scale-110 active:scale-90 transition-all shadow-lg z-20"
-          >
-            <Plus size={18} strokeWidth={2.5} />
-          </button>
-        </div>
+      {/* Product Image Frame with reduced curve */}
+      <div className={`w-full overflow-hidden relative mb-3 bg-[#0a0a0a] rounded-2xl shadow-[0_8px_20px_-8px_rgba(0,0,0,0.4)] ${isHighlight ? 'border-2 border-yellow-400/50 shadow-[0_0_20px_rgba(250,204,21,0.2)]' : 'border border-white/5'} ${isBanner ? 'aspect-[21/9]' : 'aspect-[4/4.5]'}`}>
+        <img 
+          src={product.image || product.img} 
+          alt={product.title} 
+          loading="lazy"
+          decoding="async"
+          className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 ease-out" 
+        />
+        
+        {/* Floating Add to Cart Button */}
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddToCart(product);
+          }}
+          className="absolute bottom-3 right-3 w-10 h-10 rounded-[12px] bg-black/40 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white hover:bg-charistar-green hover:text-black hover:border-transparent hover:scale-110 active:scale-90 transition-all shadow-lg z-20"
+        >
+          <Plus size={20} strokeWidth={2.5} />
+        </button>
       </div>
 
-      {/* Elegant Typography Outside the Card */}
-      <div 
-        onClick={() => onNavigate(product.id)}
-        className="px-1 block cursor-pointer"
-      >
-        <h3 className={`text-white font-black leading-snug line-clamp-2 mb-2 tracking-tight group-hover:text-charistar-green transition-colors ${isBanner ? 'text-[24px]' : 'text-[15px]'}`}>{product.title}</h3>
-        <span className={`text-white font-bold opacity-90 ${isBanner ? 'text-xl' : 'text-sm'}`}>{product.price || "0.00"}</span>
+      {/* Typography Under the Photo */}
+      <div className="px-1 block">
+        <h3 className={`text-white font-extrabold leading-snug line-clamp-2 tracking-tight group-hover:text-charistar-green transition-colors ${isBanner ? 'text-[22px] mb-1' : 'text-[15px] mb-0.5'}`}>{product.title}</h3>
+        <span className={`text-charistar-green font-bold opacity-100 ${isBanner ? 'text-lg' : 'text-[14px]'}`}>{product.price || "0.00"}</span>
       </div>
     </div>
   );
@@ -194,12 +188,14 @@ export default function ShopPage() {
   }, [query, setSearchParams]);
 
   // Filter products
-  const filteredProducts = products.filter(product => {
-    const matchesCategory = activeCategory === 'All' || product.category === activeCategory;
-    const matchesQuery = product.title.toLowerCase().includes(query.toLowerCase()) || 
-                         (product.description && product.description.toLowerCase().includes(query.toLowerCase()));
-    return matchesCategory && matchesQuery;
-  });
+  const filteredProducts = useMemo(() => {
+    return products.filter(product => {
+      const matchesCategory = activeCategory === 'All' || product.category === activeCategory;
+      const matchesQuery = product.title.toLowerCase().includes(query.toLowerCase()) || 
+                           (product.description && product.description.toLowerCase().includes(query.toLowerCase()));
+      return matchesCategory && matchesQuery;
+    });
+  }, [products, activeCategory, query]);
 
   return (
     <div 
@@ -256,8 +252,8 @@ export default function ShopPage() {
 
       <div className="px-6 pt-6">
         {loading ? (
-          <div className="grid grid-cols-2 gap-x-5 gap-y-8 animate-pulse">
-            {[1, 2, 3, 4].map(idx => (
+          <div className="grid grid-cols-1 gap-x-5 gap-y-8 animate-pulse">
+            {[1, 2, 3, 4, 5, 6].map(idx => (
               <div key={idx} className="flex flex-col">
                 <div className="w-full aspect-[4/5] rounded-[2rem] bg-white/5 border border-white/5 relative mb-4 shadow-sm" />
                 <div className="px-1 space-y-2">
@@ -294,7 +290,7 @@ export default function ShopPage() {
             </button>
           </motion.div>
         ) : (
-          <div className="grid grid-cols-2 gap-x-5 gap-y-8">
+          <div className="grid grid-cols-1 gap-x-5 gap-y-8">
             {filteredProducts.map((product) => (
               <ShopProductCard 
                 key={product.id}

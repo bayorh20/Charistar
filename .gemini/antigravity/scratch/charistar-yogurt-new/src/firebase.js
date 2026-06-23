@@ -16,13 +16,17 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Services with high-speed memory local cache for instant updates and auto long-polling
+// Initialize Services with in-memory local cache — stable, no IndexedDB permission issues.
+// Product data is persisted manually via localStorage in LandingPage & ShopPage for instant loads.
 export const db = initializeFirestore(app, {
   localCache: memoryLocalCache(),
   experimentalAutoDetectLongPolling: true
 });
 
 export const auth = getAuth(app);
+if (typeof window !== 'undefined') {
+  window.auth = auth;
+}
 export const storage = getStorage(app);
 
 const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';

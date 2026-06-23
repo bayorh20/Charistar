@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import ReactDOM from 'react-dom';
+import { trackPixelEvent } from '../utils/pixel';
 
 const CartContext = createContext();
 const FlyingContext = createContext();
@@ -32,7 +33,7 @@ export function CartProvider({ children }) {
     localStorage.setItem('charistar_cart', JSON.stringify(cartItems));
   }, [cartItems]);
 
-  const addToCart = (product, quantity = 1, selectedAddonsOrEvent = [], e = null) => {
+  const addToCart = useCallback((product, quantity = 1, selectedAddonsOrEvent = [], e = null) => {
     let selectedAddons = [];
     let clickEvent = e;
 
@@ -47,23 +48,16 @@ export function CartProvider({ children }) {
     let startY = window.innerHeight / 3;
 
     if (clickEvent) {
-      // 1. Direct click coordinate capture
       if (typeof clickEvent.clientX === 'number' && typeof clickEvent.clientY === 'number' && clickEvent.clientX > 0 && clickEvent.clientY > 0) {
         startX = clickEvent.clientX;
         startY = clickEvent.clientY;
-      } 
-      // 2. Active touch capture
-      else if (clickEvent.touches && clickEvent.touches[0] && typeof clickEvent.touches[0].clientX === 'number') {
+      } else if (clickEvent.touches && clickEvent.touches[0] && typeof clickEvent.touches[0].clientX === 'number') {
         startX = clickEvent.touches[0].clientX;
         startY = clickEvent.touches[0].clientY;
-      } 
-      // 3. Changed touch capture (for touch release)
-      else if (clickEvent.changedTouches && clickEvent.changedTouches[0] && typeof clickEvent.changedTouches[0].clientX === 'number') {
+      } else if (clickEvent.changedTouches && clickEvent.changedTouches[0] && typeof clickEvent.changedTouches[0].clientX === 'number') {
         startX = clickEvent.changedTouches[0].clientX;
         startY = clickEvent.changedTouches[0].clientY;
-      } 
-      // 4. Element-based bounding box fallback
-      else if (clickEvent.currentTarget || clickEvent.target) {
+      } else if (clickEvent.currentTarget || clickEvent.target) {
         try {
           const rect = (clickEvent.currentTarget || clickEvent.target).getBoundingClientRect();
           if (rect.width > 0 && rect.height > 0) {
@@ -86,18 +80,14 @@ export function CartProvider({ children }) {
 
     setFlyingItems(prev => [...prev, newItem]);
 
-    // Complete animation and trigger bump
     setTimeout(() => {
       setFlyingItems(prev => prev.filter(item => item.id !== animId));
       setCartBump(true);
       setTimeout(() => setCartBump(false), 350);
-    }, 1500);
+    }, 1800);
 
     const getCartItemId = (productId, addonsList = []) => {
-      const sortedNames = [...addonsList]
-        .map(a => a.name)
-        .sort()
-        .join('|');
+      const sortedNames = [...addonsList].map(a => a.name).sort().join('|');
       return sortedNames ? `${productId}_${sortedNames}` : String(productId);
     };
 
@@ -110,85 +100,97 @@ export function CartProvider({ children }) {
     const combinedPrice = basePrice + addonsTotal;
     const formattedPrice = `₦${combinedPrice.toLocaleString()}`;
 
+    trackPixelEvent('AddToCart', {
+      content_ids: [product.id],
+      content_name: product.title,
+      content_type: 'product',
+      value: combinedPrice * quantity,
+      currency: 'NGN'
+    });
+
     setCartItems(prev => {
       const existing = prev.find(item => item.id === cartItemId);
       if (existing) {
-        return prev.map(item => 
-          item.id === cartItemId 
+        return prev.map(item =>
+          item.id === cartItemId
             ? { ...item, quantity: item.quantity + quantity }
             : item
         );
       }
-      return [...prev, { 
-        ...product, 
-        id: cartItemId, 
-        productId: product.id, 
-        price: formattedPrice, 
-        selectedAddons, 
-        quantity 
-      }];
+      return [...prev, { ...product, id: cartItemId, productId: product.id, price: formattedPrice, selectedAddons, quantity }];
     });
-  };
+  }, []);
 
-  const removeFromCart = (productId) => {
+  const removeFromCart = useCallback((productId) => {
     setCartItems(prev => prev.filter(item => item.id !== productId));
-  };
+  }, []);
 
-  const updateQuantity = (productId, delta, e = null) => {
+  const updateQuantity = useCallback((productId, delta, e = null) => {
     if (delta > 0) {
-      const product = cartItems.find(item => item.id === productId);
-      if (product) {
-        let startX = window.innerWidth / 2;
-        let startY = window.innerHeight / 3;
+      setCartItems(prev => {
+        const product = prev.find(item => item.id === productId);
+        if (product) {
+          let startX = window.innerWidth / 2;
+          let startY = window.innerHeight / 3;
 
-        if (e) {
-          if (typeof e.clientX === 'number' && typeof e.clientY === 'number' && e.clientX > 0 && e.clientY > 0) {
-            startX = e.clientX;
-            startY = e.clientY;
-          } else if (e.touches && e.touches[0] && typeof e.touches[0].clientX === 'number') {
-            startX = e.touches[0].clientX;
-            startY = e.touches[0].clientY;
-          } else if (e.changedTouches && e.changedTouches[0] && typeof e.changedTouches[0].clientX === 'number') {
-            startX = e.changedTouches[0].clientX;
-            startY = e.changedTouches[0].clientY;
-          } else if (e.currentTarget || e.target) {
-            try {
-              const rect = (e.currentTarget || e.target).getBoundingClientRect();
-              if (rect.width > 0 && rect.height > 0) {
-                startX = rect.left + rect.width / 2;
-                startY = rect.top + rect.height / 2;
+          if (e) {
+            if (typeof e.clientX === 'number' && typeof e.clientY === 'number' && e.clientX > 0 && e.clientY > 0) {
+              startX = e.clientX;
+              startY = e.clientY;
+            } else if (e.touches && e.touches[0] && typeof e.touches[0].clientX === 'number') {
+              startX = e.touches[0].clientX;
+              startY = e.touches[0].clientY;
+            } else if (e.changedTouches && e.changedTouches[0] && typeof e.changedTouches[0].clientX === 'number') {
+              startX = e.changedTouches[0].clientX;
+              startY = e.changedTouches[0].clientY;
+            } else if (e.currentTarget || e.target) {
+              try {
+                const rect = (e.currentTarget || e.target).getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) {
+                  startX = rect.left + rect.width / 2;
+                  startY = rect.top + rect.height / 2;
+                }
+              } catch (err) {
+                console.warn('Failed to get bounding rect for flying animation:', err);
               }
-            } catch (err) {
-              console.warn('Failed to get bounding rect for flying animation:', err);
             }
           }
+
+          const id = Date.now() + Math.random().toString();
+          const newItem = {
+            id,
+            image: product.image || product.img || "https://images.unsplash.com/photo-1553530666-ba11a7da3888?w=300&q=80",
+            startX,
+            startY
+          };
+
+          setFlyingItems(p => [...p, newItem]);
+          setTimeout(() => {
+            setFlyingItems(p => p.filter(item => item.id !== id));
+          }, 1800);
         }
-
-        const id = Date.now() + Math.random().toString();
-        const newItem = {
-          id,
-          image: product.image || product.img || "https://images.unsplash.com/photo-1553530666-ba11a7da3888?w=300&q=80",
-          startX,
-          startY
-        };
-
-        setFlyingItems(prev => [...prev, newItem]);
-
-        setTimeout(() => {
-          setFlyingItems(prev => prev.filter(item => item.id !== id));
-        }, 1000);
-      }
+        return prev.reduce((acc, item) => {
+          if (item.id === productId) {
+            const newQ = item.quantity + delta;
+            if (newQ > 0) acc.push({ ...item, quantity: newQ });
+          } else {
+            acc.push(item);
+          }
+          return acc;
+        }, []);
+      });
+    } else {
+      setCartItems(prev => prev.reduce((acc, item) => {
+        if (item.id === productId) {
+          const newQ = item.quantity + delta;
+          if (newQ > 0) acc.push({ ...item, quantity: newQ });
+        } else {
+          acc.push(item);
+        }
+        return acc;
+      }, []));
     }
-    setCartItems(prev => prev.reduce((acc, item) => {
-      if (item.id === productId) {
-        const newQ = item.quantity + delta;
-        if (newQ > 0) acc.push({ ...item, quantity: newQ });
-      } else {
-        acc.push(item);
-      }
-      return acc;
-    }, []));
-  };
+  }, []);
 
   const clearCart = useCallback(() => setCartItems([]), []);
   const toggleCart = useCallback(() => setIsCartOpen(prev => !prev), []);

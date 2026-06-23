@@ -5,10 +5,9 @@ import { ShieldCheck, CheckCircle } from 'lucide-react';
 export default function ApplePaySheet({ isOpen, onClose, amount, onSuccess }) {
   const [step, setStep] = useState('initial'); // 'initial', 'scanning', 'success'
 
+  // State reset: return to initial step whenever sheet opens
   useEffect(() => {
-    if (isOpen) {
-      setStep('initial');
-    }
+    if (isOpen) setStep('initial');
   }, [isOpen]);
 
   const handleDoubleClick = () => {
