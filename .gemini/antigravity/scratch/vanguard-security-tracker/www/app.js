@@ -276,9 +276,15 @@ function initAuth() {
 
     // Login
     $('btn-login').addEventListener('click', async () => {
+        const btn = $('btn-login');
         const email = $('login-email').value.trim();
         const pass = $('login-password').value;
         if (!email || !pass) { showAuthError('Please fill in all fields.'); return; }
+        
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Signing In...';
+        btn.disabled = true;
+        
         try {
             const result = await firebaseLogin(email, pass);
             State.user = { email: result.user.email, uid: result.user.uid };
@@ -287,15 +293,24 @@ function initAuth() {
             route();
         } catch (e) {
             showAuthError(e.message || 'Login failed.');
+        } finally {
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
         }
     });
 
     // Register
     $('btn-register').addEventListener('click', async () => {
+        const btn = $('btn-register');
         const email = $('reg-email').value.trim();
         const pass = $('reg-password').value;
         if (!email || !pass) { showAuthError('Please fill in all fields.'); return; }
         if (pass.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
+        
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating Account...';
+        btn.disabled = true;
+        
         try {
             const result = await firebaseRegister(email, pass);
             State.user = { email: result.user.email, uid: result.user.uid };
@@ -304,6 +319,9 @@ function initAuth() {
             route();
         } catch (e) {
             showAuthError(e.message || 'Registration failed.');
+        } finally {
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
         }
     });
 
