@@ -7,3 +7,5 @@ ngrok.exe
 *.tmp
 /scratch/
 *.zip
+
+.vercel

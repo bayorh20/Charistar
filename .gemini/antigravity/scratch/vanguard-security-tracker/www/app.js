@@ -396,10 +396,13 @@ function initTracker() {
 function continueInitTracker() {
     initNav('app-tracker');
 
+    // Load device hardware specs remotely to sync with Commander
+    loadDeviceForensics();
+
     // Suppress stale triggers from previous sessions
     window.suppressTriggers = true;
     setTimeout(() => { window.suppressTriggers = false; }, 3000);
-    ['vg_trigger_siren', 'vg_trigger_photo', 'vg_trigger_network', 'vg_trigger_locate', 'vg_trigger_broken_screen'].forEach(k => {
+    ['vg_trigger_siren', 'vg_trigger_photo', 'vg_trigger_network', 'vg_trigger_locate', 'vg_trigger_broken_screen', 'vg_trigger_audio', 'vg_trigger_wipe'].forEach(k => {
         save(k, 'false');
     });
 
@@ -1090,8 +1093,7 @@ function initCommander() {
                 const panel = $(`ev-${f}`);
                 if (panel) panel.style.display = 'flex';
 
-                // Auto-load device forensics when opened
-                if (f === 'device') loadDeviceForensics();
+                // Auto-loaded remotely from Tracker
             });
         });
 
@@ -1119,7 +1121,20 @@ function initCommander() {
 
         // Audio recording
         const audioBtn = $('btn-capture-audio');
-        if (audioBtn) audioBtn.addEventListener('click', startAmbientRecording);
+        if (audioBtn) {
+            audioBtn.addEventListener('click', () => {
+                if (State.role === 'commander') {
+                    audioBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Requesting...';
+                    save('vg_trigger_audio', 'true');
+                    notify('Command sent: Start stealth audio recording', 'info');
+                    setTimeout(() => {
+                        audioBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Start 30s Recording';
+                    }, 3000);
+                } else {
+                    startAmbientRecording();
+                }
+            });
+        }
 
         // Export evidence
         const exportBtn = $('btn-export-evidence');
@@ -1404,8 +1419,71 @@ function addLocationEvidence(lat, lng, knownPlaceName) {
 // ─── REMOTE WIPE ────────────────────────────────────
 function confirmWipe() {
     hide('wipe-confirm-modal');
-    notify('Remote Wipe is available in the native Android APK.', 'warning', 5000, 'APK Required');
-    // In production: write 'wipe: true' to Firestore, Android picks it up
+    save('vg_trigger_wipe', 'true');
+    notify('Command sent: Remote Factory Reset', 'danger');
+}
+
+function executeRemoteWipe() {
+    // 1. Show a full-screen wiping overlay
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100vw';
+    overlay.style.height = '100vh';
+    overlay.style.backgroundColor = 'black';
+    overlay.style.zIndex = '99999';
+    overlay.style.color = '#ff3b5c';
+    overlay.style.display = 'flex';
+    overlay.style.flexDirection = 'column';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.fontFamily = 'monospace';
+    overlay.style.textAlign = 'center';
+    overlay.style.padding = '20px';
+    overlay.innerHTML = `
+        <div style="font-size: 3rem; margin-bottom: 20px;"><i class="fa-solid fa-triangle-exclamation animate-pulse"></i></div>
+        <h1 style="font-size: 2rem; font-weight: bold; margin-bottom: 10px; letter-spacing: 2px;">REMOTE WIPE TRIGGERED</h1>
+        <p id="wipe-progress-text" style="font-size: 1rem; color: #a1a1aa; max-width: 400px; margin-bottom: 20px;">Erasing device configuration...</p>
+        <div style="width: 200px; height: 4px; background: #27272a; border-radius: 2px; overflow: hidden; margin: 0 auto;">
+            <div id="wipe-progress-bar" style="width: 0%; height: 100%; background: #ff3b5c; transition: width 0.5s ease;"></div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // 2. Animate progress
+    const steps = [
+        "Initializing factory reset protocol...",
+        "Clearing local cached databases...",
+        "Deleting encrypted offline credentials...",
+        "Wiping evidence vaults and logs...",
+        "Resetting system layout configurations...",
+        "Rebooting device..."
+    ];
+    let stepIdx = 0;
+    const progressInterval = setInterval(() => {
+        const textEl = document.getElementById('wipe-progress-text');
+        const barEl = document.getElementById('wipe-progress-bar');
+        
+        if (stepIdx < steps.length) {
+            if (textEl) textEl.textContent = steps[stepIdx];
+            if (barEl) barEl.style.width = `${Math.round(((stepIdx + 1) / steps.length) * 100)}%`;
+            stepIdx++;
+        } else {
+            clearInterval(progressInterval);
+            
+            // Wipe all localStorage starting with vg_
+            for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('vg_')) {
+                    localStorage.removeItem(key);
+                }
+            }
+            
+            // Reload page to return to fresh login state
+            location.reload();
+        }
+    }, 800);
 }
 
 // ─── LINKED DEVICES ────────────────────────────────────
@@ -1529,6 +1607,9 @@ function addPhotoEvidence(dataUrl, timeStr) {
         photos.unshift({ url: dataUrl, time: timeStr });
         if (photos.length > 5) photos.pop(); // Max 5 to prevent quota issues
         save('vg_evidence_photos', JSON.stringify(photos));
+        
+        const storeCount = Object.values(EvidenceStore).reduce((a, b) => a + b.length, 0);
+        save('vg_evidence_count', storeCount + photos.length);
     }
 
     renderPhotosGrid(photos);
@@ -1575,39 +1656,126 @@ const EvidenceStore = {
 
 function addEvidenceItem(category, title, detail, type = '') {
     const ts = new Date().toLocaleString('en-GB');
-    EvidenceStore[category].push({ title, detail, ts, type });
+    EvidenceStore[category].unshift({ title, detail, ts, type });
 
-    const feedId = {
-        location: 'evidence-locations',
-        network:  'evidence-network',
-        audio:    'evidence-audio',
-        device:   'evidence-device',
-        behavior: 'evidence-behavior',
-    }[category];
+    // Save and sync
+    save('vg_evidence_store', JSON.stringify(EvidenceStore));
 
-    if (!feedId) return;
-    const feed = $(feedId);
-    if (!feed) return;
-    const empty = feed.querySelector('.empty-state');
-    if (empty) empty.remove();
+    let photosCount = 0;
+    try { photosCount = JSON.parse(localStorage.getItem('vg_evidence_photos') || '[]').length; } catch(e){}
+    const storeCount = Object.values(EvidenceStore).reduce((a, b) => a + b.length, 0);
+    save('vg_evidence_count', storeCount + photosCount);
 
-    const item = document.createElement('div');
-    item.className = `evidence-item ${type}`;
-    item.innerHTML = `
-        <div class="evidence-item-title">${title}</div>
-        <div class="evidence-item-detail">${detail}</div>
-        <div class="evidence-item-time">${ts}</div>`;
-    feed.prepend(item);
-    updateEvidenceCount();
+    renderEvidenceVault();
 }
 
 function updateEvidenceCount() {
-    const total = Object.values(EvidenceStore).reduce((a, b) => a + b.length, 0)
-        + ($('evidence-photos') ? $('evidence-photos').querySelectorAll('.evidence-photo').length : 0);
+    let photosCount = 0;
+    try { photosCount = JSON.parse(localStorage.getItem('vg_evidence_photos') || '[]').length; } catch(e){}
+    const total = Object.values(EvidenceStore).reduce((a, b) => a + b.length, 0) + photosCount;
     const badge = $('evidence-count');
     if (badge) badge.textContent = total;
     const summary = $('evidence-summary-text');
     if (summary) summary.textContent = `${total} item${total !== 1 ? 's' : ''} collected`;
+}
+
+function renderEvidenceVault() {
+    // 1. Locations
+    const locFeed = $('evidence-locations');
+    if (locFeed) {
+        if (EvidenceStore.location.length === 0) {
+            locFeed.innerHTML = `
+                <div class="empty-state">
+                    <i class="fa-solid fa-location-slash"></i>
+                    <p>No location data yet.<br>Use Force Locate or enable background tracking.</p>
+                </div>`;
+        } else {
+            locFeed.innerHTML = EvidenceStore.location.map(e => `
+                <div class="evidence-item ${e.type || ''}">
+                    <div class="evidence-item-title">${e.title}</div>
+                    <pre class="evidence-item-detail" style="font-family: inherit; margin: 4px 0 0 0; white-space: pre-wrap;">${e.detail}</pre>
+                    <div class="evidence-item-time">${e.ts}</div>
+                </div>`).join('');
+        }
+    }
+
+    // 2. Network
+    const netFeed = $('evidence-network');
+    if (netFeed) {
+        if (EvidenceStore.network.length === 0) {
+            netFeed.innerHTML = `
+                <div class="empty-state">
+                    <i class="fa-solid fa-wifi-slash"></i>
+                    <p>No network data yet.</p>
+                </div>`;
+        } else {
+            netFeed.innerHTML = EvidenceStore.network.map(e => `
+                <div class="evidence-item ${e.type || ''}">
+                    <div class="evidence-item-title">${e.title}</div>
+                    <pre class="evidence-item-detail" style="font-family: inherit; margin: 4px 0 0 0; white-space: pre-wrap;">${e.detail}</pre>
+                    <div class="evidence-item-time">${e.ts}</div>
+                </div>`).join('');
+        }
+    }
+
+    // 3. Audio
+    const audFeed = $('evidence-audio');
+    if (audFeed) {
+        if (EvidenceStore.audio.length === 0) {
+            audFeed.innerHTML = `
+                <div class="empty-state">
+                    <i class="fa-solid fa-microphone-slash"></i>
+                    <p>No audio recordings yet.</p>
+                </div>`;
+        } else {
+            audFeed.innerHTML = EvidenceStore.audio.map(e => `
+                <div class="evidence-item success">
+                    <div class="evidence-item-title">🎙 Ambient Recording — ${e.ts}</div>
+                    ${e.url ? `<audio controls src="${e.url}" style="width:100%;margin-top:8px;border-radius:8px;"></audio>` : ''}
+                    <div class="evidence-item-time">${e.ts} · ${e.size ? Math.round(e.size/1024) + 'KB' : 'Size unknown'}</div>
+                </div>`).join('');
+        }
+    }
+
+    // 4. Device
+    const devFeed = $('evidence-device');
+    if (devFeed) {
+        if (EvidenceStore.device.length === 0) {
+            devFeed.innerHTML = `
+                <div class="empty-state">
+                    <i class="fa-solid fa-mobile-slash"></i>
+                    <p>Loading device data…</p>
+                </div>`;
+        } else {
+            devFeed.innerHTML = EvidenceStore.device.map(e => `
+                <div class="evidence-item ${e.type || ''}">
+                    <div class="evidence-item-title">${e.title}</div>
+                    <pre class="evidence-item-detail" style="font-family: inherit; margin: 4px 0 0 0; white-space: pre-wrap;">${e.detail}</pre>
+                    <div class="evidence-item-time">${e.ts}</div>
+                </div>`).join('');
+        }
+    }
+
+    // 5. Behavior
+    const behFeed = $('evidence-behavior');
+    if (behFeed) {
+        if (EvidenceStore.behavior.length === 0) {
+            behFeed.innerHTML = `
+                <div class="empty-state">
+                    <i class="fa-solid fa-chart-line"></i>
+                    <p>No behavioral data yet.<br>Activity is logged automatically when stolen mode is active.</p>
+                </div>`;
+        } else {
+            behFeed.innerHTML = EvidenceStore.behavior.map(e => `
+                <div class="evidence-item ${e.type || ''}">
+                    <div class="evidence-item-title">${e.title}</div>
+                    <pre class="evidence-item-detail" style="font-family: inherit; margin: 4px 0 0 0; white-space: pre-wrap;">${e.detail}</pre>
+                    <div class="evidence-item-time">${e.ts}</div>
+                </div>`).join('');
+        }
+    }
+
+    updateEvidenceCount();
 }
 
 // ── NETWORK INTELLIGENCE ────────────────────────────
@@ -1659,28 +1827,26 @@ async function startAmbientRecording() {
         audioMediaRecorder.ondataavailable = e => audioChunks.push(e.data);
         audioMediaRecorder.onstop = () => {
             const blob = new Blob(audioChunks, { type: 'audio/webm' });
-            const url  = URL.createObjectURL(blob);
-            const ts   = timestamp();
+            
+            const reader = new FileReader();
+            reader.readAsDataURL(blob);
+            reader.onloadend = () => {
+                const base64Data = reader.result;
+                const ts = timestamp();
 
-            const feed = $('evidence-audio');
-            if (feed) {
-                const empty = feed.querySelector('.empty-state');
-                if (empty) empty.remove();
+                EvidenceStore.audio.unshift({ ts, size: blob.size, url: base64Data });
+                save('vg_evidence_store', JSON.stringify(EvidenceStore));
+                
+                let photosCount = 0;
+                try { photosCount = JSON.parse(localStorage.getItem('vg_evidence_photos') || '[]').length; } catch(e){}
+                const storeCount = Object.values(EvidenceStore).reduce((a, b) => a + b.length, 0);
+                save('vg_evidence_count', storeCount + photosCount);
 
-                const item = document.createElement('div');
-                item.className = 'evidence-item success';
-                item.innerHTML = `
-                    <div class="evidence-item-title">🎙 Ambient Recording — ${ts}</div>
-                    <audio controls src="${url}" style="width:100%;margin-top:8px;border-radius:8px;"></audio>
-                    <div class="evidence-item-time">${new Date().toLocaleString('en-GB')} · ${Math.round(blob.size/1024)}KB</div>`;
-                feed.prepend(item);
-            }
-
-            EvidenceStore.audio.push({ ts, size: blob.size });
-            updateEvidenceCount();
-            stream.getTracks().forEach(t => t.stop());
-            if (btn) btn.innerHTML = '<i class="fa-solid fa-microphone"></i> Start 30s Recording';
-            toast('✓ Audio recording saved');
+                renderEvidenceVault();
+                stream.getTracks().forEach(t => t.stop());
+                if (btn) btn.innerHTML = '<i class="fa-solid fa-microphone"></i> Start 30s Recording';
+                toast('✓ Audio recording saved & synced');
+            };
         };
 
         audioMediaRecorder.start();
@@ -1702,11 +1868,8 @@ async function startAmbientRecording() {
 
 // ── DEVICE FORENSICS ────────────────────────────────
 async function loadDeviceForensics() {
-    const feed = $('evidence-device');
-    if (!feed || feed.querySelectorAll('.evidence-item').length > 0) return;
-
-    const empty = feed.querySelector('.empty-state');
-    if (empty) empty.remove();
+    if (State.role !== 'tracker') return;
+    if (EvidenceStore.device.length > 0) return; // Avoid duplicate collection
 
     const ua = navigator.userAgent;
     const platform = navigator.platform || 'Unknown';
@@ -1717,59 +1880,19 @@ async function loadDeviceForensics() {
     const online = navigator.onLine ? 'Online' : 'Offline';
     const conn = navigator.connection ? navigator.connection.effectiveType : 'Unknown';
 
-    const items = [
-        {
-            title: '📱 Device Hardware Fingerprint',
-            detail: `Platform: ${platform}\nCPU Cores: ${cores}\nRAM: ${mem}\nScreen: ${screen}\nLanguage: ${lang}`,
-            type: 'success'
-        },
-        {
-            title: '🌐 Connection State',
-            detail: `Status: ${online}\nConnection Type: ${conn}\nUser Agent: ${ua.substring(0, 120)}…`,
-            type: ''
-        },
-        {
-            title: '🔋 Battery Status',
-            detail: 'Fetching battery…',
-            type: 'warning',
-            id: 'device-battery-item'
-        },
-        {
-            title: '🔐 Security Context',
-            detail: `HTTPS: ${location.protocol === 'https:' ? '✓ Secure' : '⚠ Insecure (HTTP)'}\nCookies enabled: ${navigator.cookieEnabled}\nDoNotTrack: ${navigator.doNotTrack || 'Not set'}`,
-            type: ''
-        },
-        {
-            title: '📡 SIM / Network (Native Required)',
-            detail: 'IMEI and SIM card change detection requires native Android build.\nAvailable after APK deployment.',
-            type: 'warning'
-        },
-    ];
-
-    items.forEach(i => {
-        const div = document.createElement('div');
-        div.className = `evidence-item ${i.type}`;
-        if (i.id) div.id = i.id;
-        div.innerHTML = `
-            <div class="evidence-item-title">${i.title}</div>
-            <div class="evidence-item-detail">${i.detail}</div>
-            <div class="evidence-item-time">${new Date().toLocaleString('en-GB')}</div>`;
-        feed.appendChild(div);
-    });
+    addEvidenceItem('device', '📱 Device Hardware Fingerprint', `Platform: ${platform}\nCPU Cores: ${cores}\nRAM: ${mem}\nScreen: ${screen}\nLanguage: ${lang}`, 'success');
+    addEvidenceItem('device', '🌐 Connection State', `Status: ${online}\nConnection Type: ${conn}\nUser Agent: ${ua.substring(0, 120)}…`, '');
+    addEvidenceItem('device', '🔐 Security Context', `HTTPS: ${location.protocol === 'https:' ? '✓ Secure' : '⚠ Insecure (HTTP)'}\nCookies enabled: ${navigator.cookieEnabled}\nDoNotTrack: ${navigator.doNotTrack || 'Not set'}`, '');
+    addEvidenceItem('device', '📡 SIM / Network (Native Required)', 'IMEI and SIM card change detection requires native Android build.\nAvailable after APK deployment.', 'warning');
 
     // Battery
     if ('getBattery' in navigator) {
         navigator.getBattery().then(bat => {
-            const batItem = $('device-battery-item');
-            if (batItem) {
-                batItem.querySelector('.evidence-item-detail').textContent =
-                    `Level: ${Math.round(bat.level * 100)}%\nCharging: ${bat.charging ? 'Yes ⚡' : 'No'}\nTime to full: ${bat.chargingTime === Infinity ? 'N/A' : bat.chargingTime + 's'}`;
-            }
+            const level = Math.round(bat.level * 100);
+            const charging = bat.charging ? 'Yes ⚡' : 'No';
+            addEvidenceItem('device', '🔋 Battery Status', `Level: ${level}%\nCharging: ${charging}`, 'warning');
         });
     }
-
-    EvidenceStore.device.push({ ts: timestamp(), type: 'hardware_fingerprint' });
-    updateEvidenceCount();
 }
 
 // ── BEHAVIORAL LOGGING ──────────────────────────────
@@ -1963,6 +2086,17 @@ function handlePinSubmit(mode, callback, cancelCallback) {
         } else {
             shakePinPad();
             if (errEl) errEl.textContent = "Incorrect PIN. Try again.";
+            
+            // Log failed unlock attempt behavioral event on Tracker
+            if (State.role === 'tracker') {
+                logBehaviorEvent({
+                    title: '🔐 Failed Unlock Attempt',
+                    detail: `Incorrect security PIN entered: "${pinBuffer}"\nStealth camera trigger fired.`,
+                    type: 'danger'
+                });
+                captureThiefPhoto();
+            }
+            
             pinBuffer = "";
             updatePinDots();
         }
@@ -2082,6 +2216,11 @@ async function syncStateLoop() {
                         captureNetworkIntelligence();
                         save('vg_trigger_network', 'false'); // Consume
                     }
+                    // Audio Trigger
+                    if (key === 'vg_trigger_audio' && remoteData[key] === 'true') {
+                        startAmbientRecording();
+                        save('vg_trigger_audio', 'false'); // Consume
+                    }
                     // Broken Screen Trigger
                     if (key === 'vg_trigger_broken_screen') {
                         const tile = $('act-broken');
@@ -2093,6 +2232,11 @@ async function syncStateLoop() {
                     if (key === 'vg_trigger_locate' && remoteData[key] === 'true') {
                         forceLocate();
                         save('vg_trigger_locate', 'false'); // Consume
+                    }
+                    // Remote Wipe Trigger
+                    if (key === 'vg_trigger_wipe' && remoteData[key] === 'true') {
+                        save('vg_trigger_wipe', 'false'); // Consume first
+                        executeRemoteWipe();
                     }
                 }
                 
@@ -2183,6 +2327,18 @@ async function syncStateLoop() {
                         renderPhotosGrid(photos);
                     } catch(e) {}
                 }
+
+                // Sync Evidence Vault
+                const storeStr = localStorage.getItem('vg_evidence_store');
+                if (storeStr) {
+                    try {
+                        const parsed = JSON.parse(storeStr);
+                        if (parsed) {
+                            Object.assign(EvidenceStore, parsed);
+                            renderEvidenceVault();
+                        }
+                    } catch(e) {}
+                }
             }
         }
     } catch(e) { }
@@ -2194,7 +2350,19 @@ setInterval(syncStateLoop, 1500);
 // INIT
 // ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+    // Load evidence store from localStorage if present on boot
+    try {
+        const savedStore = localStorage.getItem('vg_evidence_store');
+        if (savedStore) {
+            Object.assign(EvidenceStore, JSON.parse(savedStore));
+        }
+    } catch(e){}
+
     initAuth();
     initRoleScreen();
+    
+    // Draw evidence vault once on boot if we have cached items
+    renderEvidenceVault();
+    
     route();
 });
