@@ -1,7 +1,6 @@
 import { kv } from '@vercel/kv';
+import { localDb } from './_local_db.js';
 
-// Local in-memory store for fallback (local development only)
-const localMemoryState = {};
 
 export default async function handler(req, res) {
     // CORS headers
@@ -29,7 +28,24 @@ export default async function handler(req, res) {
         });
     }
 
-    let email = cookies['vg_email'] ? decodeURIComponent(cookies['vg_email']) : 'demo';
+    let email = cookies['vg_email'] ? decodeURIComponent(cookies['vg_email']) : null;
+
+    // Support custom header or query parameter for email (essential for mobile/Capacitor apps)
+    if (!email && req.headers['x-user-email']) {
+        email = req.headers['x-user-email'];
+    }
+    if (!email && req.query && req.query.email) {
+        email = req.query.email;
+    }
+
+    if (!email) {
+        res.status(401).json({ error: 'Unauthorized. Please log in.' });
+        return;
+    }
+
+    // Determine state storage key (partition by deviceId if available, fallback to user email)
+    const deviceId = req.query.deviceId;
+    const redisKey = deviceId ? `vanguard:state:device:${deviceId}` : `vanguard:state:user:${email}`;
 
     if (req.method === 'POST') {
         const data = req.body || {};
@@ -53,7 +69,6 @@ export default async function handler(req, res) {
                 }
             } else {
                 // User logged out, clear cookie
-                email = 'demo';
                 res.setHeader('Set-Cookie', 'vg_email=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT');
             }
         }
@@ -64,14 +79,9 @@ export default async function handler(req, res) {
 
         if (Object.keys(stateToSave).length > 0) {
             if (useKV) {
-                const redisKey = `vanguard:state:${email}`;
                 await kv.hset(redisKey, stateToSave);
             } else {
-                // Local memory fallback
-                if (!localMemoryState[email]) {
-                    localMemoryState[email] = {};
-                }
-                localMemoryState[email] = { ...localMemoryState[email], ...stateToSave };
+                await localDb.setState(redisKey, stateToSave);
             }
         }
 
@@ -82,10 +92,9 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
         let state = {};
         if (useKV) {
-            const redisKey = `vanguard:state:${email}`;
             state = (await kv.hgetall(redisKey)) || {};
         } else {
-            state = localMemoryState[email] || {};
+            state = await localDb.getState(redisKey);
         }
 
         res.status(200).json(state);

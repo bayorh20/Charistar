@@ -180,36 +180,40 @@ function addTrackerEvent(text, type = '') {
 }
 
 // ─────────────────────────────────────────────────────
-// FIREBASE — STUB (works without real config)
+// BACKEND-BACKED AUTHENTICATION (KV PROD)
 // ─────────────────────────────────────────────────────
-function firebaseLogin(email, password) {
-    if (window.firebase && firebase.auth) {
-        return firebase.auth().signInWithEmailAndPassword(email, password).catch(err => {
-            console.warn("Firebase Auth failed, using demo fallback:", err.message);
-            return { user: { email, uid: 'demo_' + Date.now() } };
-        });
+async function firebaseLogin(email, password) {
+    const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+    });
+    if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || 'Login failed.');
     }
-    // Demo fallback
-    return Promise.resolve({ user: { email, uid: 'demo_' + Date.now() } });
+    const data = await res.json();
+    return { user: { email: data.user.email, name: data.user.name, uid: data.user.uid } };
 }
 
-function firebaseRegister(email, password) {
-    if (window.firebase && firebase.auth) {
-        return firebase.auth().createUserWithEmailAndPassword(email, password).catch(err => {
-            console.warn("Firebase Auth failed, using demo fallback:", err.message);
-            return { user: { email, uid: 'demo_' + Date.now() } };
-        });
+async function firebaseRegister(email, password) {
+    const name = $('reg-name') ? $('reg-name').value : email.split('@')[0];
+    const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password })
+    });
+    if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || 'Registration failed.');
     }
-    return Promise.resolve({ user: { email, uid: 'demo_' + Date.now() } });
+    const data = await res.json();
+    return { user: { email: data.user.email, name: data.user.name, uid: data.user.uid } };
 }
 
 function firebaseLogout() {
-    if (window.firebase && firebase.auth) {
-        return firebase.auth().signOut().catch(e => {
-            console.warn("Firebase logout failed:", e.message);
-            return Promise.resolve();
-        });
-    }
+    // Clear session cookies
+    document.cookie = 'vg_email=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
     return Promise.resolve();
 }
 
@@ -303,13 +307,6 @@ function initAuth() {
         }
     });
 
-    // Demo skip
-    $('btn-demo-skip').addEventListener('click', e => {
-        e.preventDefault();
-        State.user = { email: 'Demo Mode', uid: 'demo' };
-        save('vg_user', State.user);
-        route();
-    });
 }
 
 function showAuthError(msg) {
@@ -565,6 +562,19 @@ function updateTrackerConnectionDot() {
     }
 }
 
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // Earth radius in meters
+    const phi1 = lat1 * Math.PI / 180;
+    const phi2 = lat2 * Math.PI / 180;
+    const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+    const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+              Math.cos(phi1) * Math.cos(phi2) *
+              Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
 let lastGeocodedLat = 0;
 let lastGeocodedLng = 0;
 let lastGeocodeTime = 0;
@@ -624,8 +634,62 @@ function startLocationTracking() {
     if (!State.protectionActive) return;
     if (State.watchId) return;
     State.watchId = navigator.geolocation.watchPosition(pos => {
-        const { latitude: lat, longitude: lng, accuracy } = pos.coords;
-        State.lastLocation = { lat, lng, time: new Date().toISOString() };
+        const { latitude: lat, longitude: lng, accuracy, speed } = pos.coords;
+        const now = new Date();
+        
+        let calculatedSpeed = speed;
+        if (State.lastLocation) {
+            const lastLoc = State.lastLocation;
+            const timeDiffSec = (now - new Date(lastLoc.time)) / 1000;
+            if (timeDiffSec > 0) {
+                const distMeters = calculateDistance(lastLoc.lat, lastLoc.lng, lat, lng);
+                const derivedSpeed = distMeters / timeDiffSec;
+                
+                if (calculatedSpeed === null || calculatedSpeed === undefined) {
+                    calculatedSpeed = derivedSpeed;
+                }
+
+                // Speeding detection (escapes in vehicles): > 33.3 m/s is 120 km/h
+                if (derivedSpeed > 33.3) {
+                    logBehaviorEvent({
+                        title: '🚨 High-Speed Movement Detected',
+                        detail: `Speed: ${(derivedSpeed * 3.6).toFixed(1)} km/h\nPossible vehicle escape in progress.`,
+                        type: 'danger'
+                    });
+                }
+
+                // Crash / Deceleration detection (sudden impact): deceleration > 8.0 m/s^2
+                if (lastLoc.speed !== undefined && lastLoc.speed !== null) {
+                    const accel = (calculatedSpeed - lastLoc.speed) / timeDiffSec;
+                    if (accel < -8.0) {
+                        logBehaviorEvent({
+                            title: '💥 Sudden Deceleration / Impact Detected',
+                            detail: `Deceleration: ${Math.abs(accel).toFixed(1)} m/s²\nPossible crash or sudden grab-and-stop.`,
+                            type: 'danger'
+                        });
+                    }
+                }
+            }
+        }
+
+        // Pre-shutdown Battery Alert
+        if ('getBattery' in navigator) {
+            navigator.getBattery().then(bat => {
+                const lvl = Math.round(bat.level * 100);
+                if (lvl <= 5 && localStorage.getItem('vg_logged_battery_critical') !== 'true') {
+                    logBehaviorEvent({
+                        title: '🔋 Critical Battery Alert (Pre-Shutdown)',
+                        detail: `Battery level is at ${lvl}%.\nDevice may power off soon. Last coordinates logged.`,
+                        type: 'danger'
+                    });
+                    localStorage.setItem('vg_logged_battery_critical', 'true');
+                } else if (lvl > 5) {
+                    localStorage.setItem('vg_logged_battery_critical', 'false');
+                }
+            });
+        }
+
+        State.lastLocation = { lat, lng, speed: calculatedSpeed, time: now.toISOString() };
         save('vg_last_location', State.lastLocation);
 
         const locText = $('tracker-location-text');
@@ -811,7 +875,7 @@ function saveContacts() {
     save('vg_c1phone', $('contact-phone-1').value);
     save('vg_c2name',  $('contact-name-2').value);
     save('vg_c2phone', $('contact-phone-2').value);
-    toast('✓ Emergency contacts saved');
+    toast('✓ Recovery contacts saved');
 }
 
 // ── PERMISSIONS ENGINE ─────────────────────────────
@@ -1059,6 +1123,41 @@ let commanderInitialized = false;
 function initCommander() {
     initNav('app-commander');
 
+    // Device Selector event listener
+    const selector = $('device-selector');
+    if (selector) {
+        const storedActiveId = localStorage.getItem('vg_active_tracking_device_id');
+        if (storedActiveId) {
+            selector.value = storedActiveId;
+            State.activeTrackingDeviceId = storedActiveId;
+        }
+
+        selector.addEventListener('change', (e) => {
+            const deviceId = e.target.value;
+            State.activeTrackingDeviceId = deviceId;
+            save('vg_active_tracking_device_id', deviceId);
+            
+            if (deviceId) {
+                // Clear any cached dashboard UI states to load fresh device states
+                localStorage.removeItem('vg_last_location');
+                localStorage.removeItem('vg_battery_level');
+                localStorage.removeItem('vg_evidence_photos');
+                localStorage.removeItem('vg_evidence_store');
+                localStorage.removeItem('vg_evidence_count');
+                
+                // Immediately sync state for the selected device
+                syncStateLoop();
+                notify(`Tracking started for device ${deviceId}`, 'success');
+            } else {
+                // Clear map and details if no device selected
+                $('map-placeholder').style.display = 'flex';
+                $('map-inner').style.display = 'none';
+                $('map-overlay-info').style.display = 'none';
+                $('device-status-bar').style.display = 'none';
+            }
+        });
+    }
+
     // User email
     const emailEl = $('commander-user-email');
     if (emailEl && State.user) emailEl.textContent = State.user.email;
@@ -1263,17 +1362,21 @@ function stopSiren() {
 function toggleBrokenScreen() {
     const tile = $('act-broken');
     const overlay = $('broken-screen-overlay');
-    const isActive = tile.classList.contains('active');
+    const isActive = tile ? tile.classList.contains('active') : (overlay && overlay.style.display === 'block');
 
     if (State.role === 'commander') {
         save('vg_trigger_broken_screen', !isActive ? 'true' : 'false');
         if (!isActive) {
-            tile.classList.add('active');
-            tile.querySelector('small').textContent = 'ACTIVE';
+            if (tile) {
+                tile.classList.add('active');
+                tile.querySelector('small').textContent = 'ACTIVE';
+            }
             notify('Command sent: Deploy screen decoy', 'warning', 3000);
         } else {
-            tile.classList.remove('active');
-            tile.querySelector('small').textContent = 'Inactive';
+            if (tile) {
+                tile.classList.remove('active');
+                tile.querySelector('small').textContent = 'Inactive';
+            }
             notify('Command sent: Remove screen decoy', 'info', 3000);
         }
         return;
@@ -1281,8 +1384,10 @@ function toggleBrokenScreen() {
 
     if (!isActive) {
         if (overlay) overlay.style.display = 'block';
-        tile.classList.add('active');
-        tile.querySelector('small').textContent = 'ACTIVE';
+        if (tile) {
+            tile.classList.add('active');
+            tile.querySelector('small').textContent = 'ACTIVE';
+        }
         notify('Screen decoy is live on the tracked device.', 'warning', 4000, 'Broken Screen Active');
     } else {
         hideBrokenScreen();
@@ -1319,26 +1424,34 @@ function forceLocate() {
     const tile = $('act-locate');
 
     if (State.role === 'commander') {
-        tile.querySelector('small').textContent = 'Requesting…';
-        tile.classList.add('active');
+        if (tile) {
+            tile.querySelector('small').textContent = 'Requesting…';
+            tile.classList.add('active');
+        }
         save('vg_trigger_locate', 'true');
         notify('Command sent: Force GPS Location', 'info', 3000);
         setTimeout(() => {
-            tile.querySelector('small').textContent = 'Force';
-            tile.classList.remove('active');
+            if (tile) {
+                tile.querySelector('small').textContent = 'Force';
+                tile.classList.remove('active');
+            }
         }, 5000);
         return;
     }
 
-    tile.querySelector('small').textContent = 'Acquiring…';
-    tile.classList.add('active');
+    if (tile) {
+        tile.querySelector('small').textContent = 'Acquiring…';
+        tile.classList.add('active');
+    }
 
     navigator.geolocation.getCurrentPosition(pos => {
-        const { latitude: lat, longitude: lng } = pos.coords;
+        const { latitude: lat, longitude: lng, accuracy } = pos.coords;
         const coordsEl = $('map-coords-text');
         const timeEl   = $('map-time-text');
         if (timeEl) timeEl.textContent = timestamp();
-        $('map-overlay-info').style.display = 'flex';
+        
+        const overlayInfo = $('map-overlay-info');
+        if (overlayInfo) overlayInfo.style.display = 'flex';
 
         // Resolve place name then update Mapbox
         reverseGeocode(lat, lng, (placeName) => {
@@ -1346,8 +1459,10 @@ function forceLocate() {
             if (coordsEl) coordsEl.textContent = placeName;
 
             // Show Mapbox map
-            $('map-placeholder').style.display = 'none';
-            $('map-overlay-info').style.display = 'flex';
+            const placeholder = $('map-placeholder');
+            if (placeholder) placeholder.style.display = 'none';
+            if (overlayInfo) overlayInfo.style.display = 'flex';
+            
             const mapInner = $('map-inner');
             if (mapInner && typeof mapboxgl !== 'undefined') {
                 mapInner.style.display = 'block';
@@ -1369,7 +1484,7 @@ function forceLocate() {
                 }
             }
 
-            tile.querySelector('small').textContent = 'Located!';
+            if (tile) tile.querySelector('small').textContent = 'Located!';
             notify(placeName, 'success', 5000, 'Location Fixed');
 
             // Add to location history
@@ -1383,8 +1498,10 @@ function forceLocate() {
         });
 
     }, () => {
-        tile.querySelector('small').textContent = 'Failed';
-        tile.classList.remove('active');
+        if (tile) {
+            tile.querySelector('small').textContent = 'Failed';
+            tile.classList.remove('active');
+        }
         notify('Could not get location. Check GPS permissions.', 'danger', 5000, 'Location Failed');
     }, { enableHighAccuracy: true, timeout: 10000 });
 }
@@ -2154,194 +2271,226 @@ function requestPinAuthorization(action, cancelAction) {
 // ─── LIVE SYNC ENGINE ──────────────────────────────
 async function syncStateLoop() {
     try {
-        // Collect our vg_ keys
-        const localData = {};
-        for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key.startsWith('vg_')) {
-                localData[key] = localStorage.getItem(key);
+        if (!State.user) return; // Must be logged in
+
+        if (State.role === 'tracker') {
+            // Tracker sends its local state and retrieves remote commands
+            const localData = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('vg_')) {
+                    localData[key] = localStorage.getItem(key);
+                }
             }
+
+            const syncId = State.deviceId;
+            await fetch(`/api/sync?deviceId=${syncId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(localData)
+            });
+
+            const res = await fetch(`/api/sync?deviceId=${syncId}`);
+            const remoteData = await res.json();
+            
+            handleRemoteData(remoteData);
+        } else if (State.role === 'commander') {
+            // Commander gets state for the active tracking device and posts commands
+            const syncId = State.activeTrackingDeviceId || localStorage.getItem('vg_active_tracking_device_id');
+            if (!syncId) return;
+
+            // Prepare commander commands
+            const commanderCommands = {
+                vg_trigger_siren: localStorage.getItem('vg_trigger_siren') || 'false',
+                vg_trigger_broken_screen: localStorage.getItem('vg_trigger_broken_screen') || 'false',
+                vg_trigger_locate: localStorage.getItem('vg_trigger_locate') || 'false',
+                vg_trigger_photo: localStorage.getItem('vg_trigger_photo') || 'false',
+                vg_trigger_network: localStorage.getItem('vg_trigger_network') || 'false',
+                vg_trigger_audio: localStorage.getItem('vg_trigger_audio') || 'false',
+                vg_trigger_wipe: localStorage.getItem('vg_trigger_wipe') || 'false',
+                vg_stolen: localStorage.getItem('vg_stolen') || 'false'
+            };
+
+            await fetch(`/api/sync?deviceId=${syncId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(commanderCommands)
+            });
+
+            const res = await fetch(`/api/sync?deviceId=${syncId}`);
+            const remoteData = await res.json();
+
+            handleRemoteData(remoteData);
         }
+    } catch(e) {
+        console.error("Sync error:", e);
+    }
+}
 
-        // Send local, get global
-        await fetch('/api/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(localData)
-        });
+function handleRemoteData(remoteData) {
+    let changed = false;
+    for (const key in remoteData) {
+        if (remoteData[key] !== localStorage.getItem(key)) {
+            // Suppress remote triggers during the first 3 seconds of Tracker boot
+            if (window.suppressTriggers && key.startsWith('vg_trigger_')) {
+                continue;
+            }
+            localStorage.setItem(key, remoteData[key]);
+            changed = true;
 
-        const res = await fetch('/api/sync');
-        const remoteData = await res.json();
-        
-        let changed = false;
-        for (const key in remoteData) {
-            if (remoteData[key] !== localStorage.getItem(key)) {
-                
-                // Suppress remote triggers during the first 3 seconds of Tracker boot 
-                // so it doesn't blast sirens from stale commander commands
-                if (window.suppressTriggers && key.startsWith('vg_trigger_')) {
-                    continue;
-                }
-                localStorage.setItem(key, remoteData[key]);
-                changed = true;
-                
-                // If commander just turned on Siren, tracker should blast it
-                if (key === 'vg_trigger_siren' && remoteData[key] === 'true' && State.role === 'tracker') {
-                    if (window.plugins && window.plugins.VanguardPlugin) {
-                        window.plugins.VanguardPlugin.triggerSiren();
-                    } else if (!window.sirenAudio) {
-                        window.sirenAudio = new Audio('https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg');
-                        window.sirenAudio.loop = true;
-                        window.sirenAudio.play().catch(e => console.warn(e));
-                    }
-                }
-                if (key === 'vg_trigger_siren' && remoteData[key] === 'false' && State.role === 'tracker') {
-                    if (window.plugins && window.plugins.VanguardPlugin) {
-                        window.plugins.VanguardPlugin.stopSiren();
-                    } else if (window.sirenAudio) {
-                        window.sirenAudio.pause();
-                        window.sirenAudio.currentTime = 0;
-                        window.sirenAudio = null;
-                    }
-                }
-
-                if (State.role === 'tracker') {
-                    // Photo Trigger
-                    if (key === 'vg_trigger_photo' && remoteData[key] === 'true') {
-                        captureThiefPhoto();
-                        save('vg_trigger_photo', 'false'); // Consume
-                    }
-                    // Network Trigger
-                    if (key === 'vg_trigger_network' && remoteData[key] === 'true') {
-                        captureNetworkIntelligence();
-                        save('vg_trigger_network', 'false'); // Consume
-                    }
-                    // Audio Trigger
-                    if (key === 'vg_trigger_audio' && remoteData[key] === 'true') {
-                        startAmbientRecording();
-                        save('vg_trigger_audio', 'false'); // Consume
-                    }
-                    // Broken Screen Trigger
-                    if (key === 'vg_trigger_broken_screen') {
-                        const tile = $('act-broken');
-                        const isActive = tile && tile.classList.contains('active');
-                        if (remoteData[key] === 'true' && !isActive) toggleBrokenScreen();
-                        else if (remoteData[key] === 'false' && isActive) toggleBrokenScreen();
-                    }
-                    // Force Locate Trigger
-                    if (key === 'vg_trigger_locate' && remoteData[key] === 'true') {
-                        forceLocate();
-                        save('vg_trigger_locate', 'false'); // Consume
-                    }
-                    // Remote Wipe Trigger
-                    if (key === 'vg_trigger_wipe' && remoteData[key] === 'true') {
-                        save('vg_trigger_wipe', 'false'); // Consume first
-                        executeRemoteWipe();
-                    }
-                }
-                
-                // Track state changes
-                if (key === 'vg_protection_active' && State.role === 'tracker') {
+            if (State.role === 'tracker') {
+                // Siren Trigger
+                if (key === 'vg_trigger_siren') {
                     const active = remoteData[key] === 'true';
-                    if (State.protectionActive !== active) {
-                        setProtectionActive(active, true);
+                    if (active && !State.alarmActive) {
+                        State.alarmActive = true;
+                        startSiren();
+                        addTrackerEvent('Siren triggered remotely by owner', 'danger');
+                    } else if (!active && State.alarmActive) {
+                        State.alarmActive = false;
+                        stopSiren();
+                        addTrackerEvent('Siren stopped remotely by owner', 'success');
+                    }
+                }
+                // Photo Trigger
+                if (key === 'vg_trigger_photo' && remoteData[key] === 'true') {
+                    captureThiefPhoto();
+                    save('vg_trigger_photo', 'false'); // Consume
+                }
+                // Network Trigger
+                if (key === 'vg_trigger_network' && remoteData[key] === 'true') {
+                    captureNetworkIntelligence();
+                    save('vg_trigger_network', 'false'); // Consume
+                }
+                // Audio Trigger
+                if (key === 'vg_trigger_audio' && remoteData[key] === 'true') {
+                    startAmbientRecording();
+                    save('vg_trigger_audio', 'false'); // Consume
+                }
+                // Broken Screen Trigger
+                if (key === 'vg_trigger_broken_screen') {
+                    const overlay = $('broken-screen-overlay');
+                    const isActive = overlay && overlay.style.display === 'block';
+                    if (remoteData[key] === 'true' && !isActive) toggleBrokenScreen();
+                    else if (remoteData[key] === 'false' && isActive) toggleBrokenScreen();
+                }
+                // Force Locate Trigger
+                if (key === 'vg_trigger_locate' && remoteData[key] === 'true') {
+                    forceLocate();
+                    save('vg_trigger_locate', 'false'); // Consume
+                }
+                // Remote Wipe Trigger
+                if (key === 'vg_trigger_wipe' && remoteData[key] === 'true') {
+                    save('vg_trigger_wipe', 'false'); // Consume first
+                    executeRemoteWipe();
+                }
+                // Stolen State Trigger
+                if (key === 'vg_stolen') {
+                    State.stolen = remoteData[key] === 'true';
+                    const shieldStatus = $('tracker-shield-status');
+                    const shieldGlow = $('tracker-shield-glow');
+                    const shieldSub = $('tracker-shield-sub');
+                    if (State.stolen) {
+                        if (shieldStatus) {
+                            shieldStatus.textContent = '🚨 STOLEN';
+                            shieldStatus.classList.add('danger-pulse');
+                        }
+                        if (shieldGlow) shieldGlow.classList.add('inactive');
+                        if (shieldSub) shieldSub.textContent = 'ALERT: This phone is flagged STOLEN!';
+                        addTrackerEvent('Device reported stolen by owner!', 'danger');
+                    } else {
+                        if (shieldStatus) {
+                            shieldStatus.textContent = 'PROTECTED';
+                            shieldStatus.classList.remove('danger-pulse');
+                        }
+                        if (shieldGlow) shieldGlow.classList.remove('inactive');
+                        if (shieldSub) shieldSub.textContent = 'Device is being monitored';
                     }
                 }
             }
         }
+    }
 
-        if (changed) {
-            // Hot reload UI components
-            if (State.role === 'commander' && commanderInitialized) {
-                // Refresh Commander dashboard
-                const locStr = localStorage.getItem('vg_last_location');
-                if (locStr) {
-                    const loc = JSON.parse(locStr);
-                    const coordsEl = $('map-coords-text');
-                    const timeEl = $('map-time-text');
-                    if (timeEl) timeEl.textContent = 'Just now';
+    if (changed || State.role === 'commander') {
+        // Hot reload UI components
+        if (State.role === 'commander' && commanderInitialized) {
+            // Refresh Commander dashboard
+            const locStr = localStorage.getItem('vg_last_location');
+            if (locStr) {
+                const loc = JSON.parse(locStr);
+                const coordsEl = $('map-coords-text');
+                const timeEl = $('map-time-text');
+                if (timeEl) timeEl.textContent = 'Just now';
+                
+                reverseGeocode(loc.lat, loc.lng, (placeName) => {
+                    if (coordsEl) coordsEl.textContent = placeName;
+                });
+                
+                const mapInner = $('map-inner');
+                if (mapInner && typeof mapboxgl !== 'undefined') {
+                    mapInner.style.display = 'block';
+                    $('map-placeholder').style.display = 'none';
+                    $('map-overlay-info').style.display = 'flex';
                     
-                    // Update location pill always
-                    reverseGeocode(loc.lat, loc.lng, (placeName) => {
-                        if (coordsEl) coordsEl.textContent = placeName;
-                    });
-                    
-                    const mapInner = $('map-inner');
-                    if (mapInner && typeof mapboxgl !== 'undefined') {
-                        mapInner.style.display = 'block';
-                        $('map-placeholder').style.display = 'none';
-                        $('map-overlay-info').style.display = 'flex';
+                    if (!commanderMap) {
+                        mapboxgl.accessToken = MAPBOX_TOKEN;
+                        commanderMap = new mapboxgl.Map({
+                            container: 'map-inner',
+                            style: 'mapbox://styles/mapbox/dark-v11',
+                            center: [loc.lng, loc.lat],
+                            zoom: 16
+                        });
                         
-                        if (!commanderMap) {
-                            mapboxgl.accessToken = MAPBOX_TOKEN;
-                            commanderMap = new mapboxgl.Map({
-                                container: 'map-inner',
-                                style: 'mapbox://styles/mapbox/dark-v11', // Dark UI style
-                                center: [loc.lng, loc.lat],
-                                zoom: 16
-                            });
-                            
-                            // Custom Marker Element
-                            const el = document.createElement('div');
-                            el.className = 'custom-mapbox-marker';
-                            el.innerHTML = '<i class="fa-solid fa-location-crosshairs" style="color:var(--primary);font-size:1.5rem;filter:drop-shadow(0 0 5px var(--primary));"></i>';
-                            
-                            commanderMarker = new mapboxgl.Marker(el)
-                                .setLngLat([loc.lng, loc.lat])
-                                .addTo(commanderMap);
-                        } else {
-                            commanderMap.flyTo({ center: [loc.lng, loc.lat], zoom: 16, speed: 0.8 });
-                            if (commanderMarker) {
-                                commanderMarker.setLngLat([loc.lng, loc.lat]);
-                            }
+                        const el = document.createElement('div');
+                        el.className = 'custom-mapbox-marker';
+                        el.innerHTML = '<i class="fa-solid fa-location-crosshairs" style="color:var(--primary);font-size:1.5rem;filter:drop-shadow(0 0 5px var(--primary));"></i>';
+                        
+                        commanderMarker = new mapboxgl.Marker(el)
+                            .setLngLat([loc.lng, loc.lat])
+                            .addTo(commanderMap);
+                    } else {
+                        commanderMap.flyTo({ center: [loc.lng, loc.lat], zoom: 16, speed: 0.8 });
+                        if (commanderMarker) {
+                            commanderMarker.setLngLat([loc.lng, loc.lat]);
                         }
                     }
-                }
-                
-                // Update battery
-                const batStr = localStorage.getItem('vg_battery_level');
-                if (batStr) {
-                    const bel = $('cmd-battery-level');
-                    const bicon = $('cmd-battery-icon');
-                    if (bel) bel.textContent = batStr + '%';
-                    if (bicon) {
-                        const b = parseInt(batStr);
-                        if (b > 80) bicon.className = 'fa-solid fa-battery-full';
-                        else if (b > 50) bicon.className = 'fa-solid fa-battery-half';
-                        else if (b > 20) bicon.className = 'fa-solid fa-battery-quarter';
-                        else bicon.className = 'fa-solid fa-battery-empty';
-                        bicon.style.color = b <= 20 ? 'var(--red)' : 'var(--primary)';
-                    }
-                }
-                
-                // Evidence count
-                const count = localStorage.getItem('vg_evidence_count');
-                const badge = $('evidence-count');
-                if (badge && count) badge.textContent = count;
-
-                // Sync Photos
-                const photosStr = localStorage.getItem('vg_evidence_photos');
-                if (photosStr) {
-                    try {
-                        const photos = JSON.parse(photosStr);
-                        renderPhotosGrid(photos);
-                    } catch(e) {}
-                }
-
-                // Sync Evidence Vault
-                const storeStr = localStorage.getItem('vg_evidence_store');
-                if (storeStr) {
-                    try {
-                        const parsed = JSON.parse(storeStr);
-                        if (parsed) {
-                            Object.assign(EvidenceStore, parsed);
-                            renderEvidenceVault();
-                        }
-                    } catch(e) {}
                 }
             }
+            
+            // Update battery
+            const batStr = localStorage.getItem('vg_battery_level');
+            if (batStr) {
+                const bel = $('cmd-battery');
+                if (bel) bel.textContent = batStr + '%';
+            }
+            
+            // Evidence count
+            const count = localStorage.getItem('vg_evidence_count');
+            const badge = $('evidence-count');
+            if (badge && count) badge.textContent = count;
+
+            // Sync Photos
+            const photosStr = localStorage.getItem('vg_evidence_photos');
+            if (photosStr) {
+                try {
+                    const photos = JSON.parse(photosStr);
+                    renderPhotosGrid(photos);
+                } catch(e) {}
+            }
+
+            // Sync Evidence Vault
+            const storeStr = localStorage.getItem('vg_evidence_store');
+            if (storeStr) {
+                try {
+                    const parsed = JSON.parse(storeStr);
+                    if (parsed) {
+                        Object.assign(EvidenceStore, parsed);
+                        renderEvidenceVault();
+                    }
+                } catch(e) {}
+            }
         }
-    } catch(e) { }
+    }
 }
 
 setInterval(syncStateLoop, 1500);

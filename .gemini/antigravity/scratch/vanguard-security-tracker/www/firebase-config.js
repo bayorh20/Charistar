@@ -1,11 +1,11 @@
-// Firebase config stub — Vanguard runs fully in demo mode via local server sync.
-// Real Firebase can be enabled by adding the SDK scripts and proper config below.
+// Firebase config stub — Vanguard runs natively via database-backed production APIs.
+// Real Firebase can be enabled if desired by adding the SDK scripts and configuring below.
 
 (function() {
     if (typeof firebase !== 'undefined') {
         try {
             const firebaseConfig = {
-                apiKey: "demo",
+                apiKey: "prod",
                 authDomain: "vanguard.firebaseapp.com",
                 projectId: "vanguard",
                 storageBucket: "vanguard.appspot.com",
@@ -15,9 +15,9 @@
             firebase.initializeApp(firebaseConfig);
         } catch(e) {
             // Already initialized or config invalid — safe to ignore
-            console.info('Firebase init skipped (demo mode).');
+            console.info('Firebase init skipped.');
         }
     } else {
-        console.info('Firebase SDK not loaded — running in demo sync mode.');
+        console.info('Vanguard secure API sync enabled.');
     }
 })();
