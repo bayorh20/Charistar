@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vanguard — Safety Command Center Headquarters</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="command_center_style.css">
+    
+    <!-- Mapbox GL JS & CSS -->
+    <link href='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css' rel='stylesheet' />
+    <script src='https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js'></script>
+</head>
+<body>
+
+<div class="cc-layout">
+    <!-- Header -->
+    <header class="cc-header">
+        <div class="cc-logo">
+            <i class="fa-solid fa-satellite-dish"></i>
+            <span>VANGUARD COMMAND HEADQUARTERS</span>
+        </div>
+        <div class="cc-header-right">
+            <div class="user-badge">
+                <i class="fa-solid fa-user-shield"></i>
+                <span id="admin-user-email">admin@vanguard.com</span>
+                <span class="role-indicator" id="admin-role-badge">Super Admin</span>
+            </div>
+            <button class="user-badge" id="btn-back-app" style="cursor:pointer; border-color:var(--primary); color:var(--primary); font-weight:700;">
+                <i class="fa-solid fa-mobile-screen"></i> Mobile App View
+            </button>
+            <button class="user-badge" id="btn-admin-logout" style="cursor:pointer; border-color:var(--danger); color:var(--danger);">
+                <i class="fa-solid fa-right-from-bracket"></i> Logout
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="cc-main">
+        <!-- LEFT PANEL: Devices -->
+        <section class="cc-panel">
+            <div class="panel-header">
+                <span>Linked Trackers</span>
+                <span class="role-indicator" id="tracker-count-badge">0</span>
+            </div>
+            <div class="panel-body" id="tracker-devices-list">
+                <p style="color:var(--text3); font-size:0.8rem; text-align:center; padding-top:40px;">No linked devices found.</p>
+            </div>
+        </section>
+
+        <!-- CENTER: Map & Action Gateway -->
+        <section class="workspace-center">
+            <!-- KPI Overview Stats -->
+            <div class="kpi-bar">
+                <div class="kpi-card online">
+                    <div class="kpi-icon"><i class="fa-solid fa-signal"></i></div>
+                    <div class="kpi-info">
+                        <span>Connected</span>
+                        <strong id="kpi-online">0</strong>
+                    </div>
+                </div>
+                <div class="kpi-card stolen">
+                    <div class="kpi-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div class="kpi-info">
+                        <span>Stolen Status</span>
+                        <strong id="kpi-stolen">0</strong>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon"><i class="fa-solid fa-shield-halved" style="color:var(--primary);"></i></div>
+                    <div class="kpi-info">
+                        <span>Threat Score</span>
+                        <strong id="kpi-threat">0%</strong>
+                    </div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-icon"><i class="fa-solid fa-database" style="color:var(--cyan);"></i></div>
+                    <div class="kpi-info">
+                        <span>Evidence Count</span>
+                        <strong id="kpi-evidence">0</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Full-frame Map Sandbox -->
+            <div class="full-map-frame">
+                <div class="map-overlay-center" id="map-select-prompt">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                    <p style="font-size:0.95rem; color:var(--text2); font-weight:500;">Select a tracked device on the left menu to build connection maps</p>
+                </div>
+                <div id="cc-map-container" style="width:100%; height:100%;"></div>
+            </div>
+
+            <!-- Lower action bar: Command Dispatcher -->
+            <div class="cc-panel" style="border-right:none; border-top:1px solid var(--border);">
+                <div class="panel-header" style="padding:10px 20px;">
+                    <span>Countermeasure Command Dispatcher Gateway</span>
+                    <span class="role-indicator" style="background:rgba(0, 207, 255, 0.1); border-color:rgba(0, 207, 255, 0.3); color:var(--cyan);">Audited Encrypted Pipeline</span>
+                </div>
+                <div style="padding:16px 20px; display:grid; grid-template-columns: 2fr 1fr; gap:20px;">
+                    <!-- Commands Tiles Grid -->
+                    <div class="cc-actions-grid">
+                        <button class="cc-action-tile" id="cc-cmd-siren" disabled>
+                            <i class="fa-solid fa-bullhorn"></i>
+                            <span>Blast Alarm</span>
+                        </button>
+                        <button class="cc-action-tile" id="cc-cmd-photo" disabled>
+                            <i class="fa-solid fa-camera"></i>
+                            <span>Stealth Photo</span>
+                        </button>
+                        <button class="cc-action-tile" id="cc-cmd-lock" disabled>
+                            <i class="fa-solid fa-lock"></i>
+                            <span>Lockdown Device</span>
+                        </button>
+                        <button class="cc-action-tile danger-tile" id="cc-cmd-wipe" disabled>
+                            <i class="fa-solid fa-trash-can"></i>
+                            <span>Remote Wipe</span>
+                        </button>
+                    </div>
+
+                    <!-- Command Execution Delivery Trackers -->
+                    <div class="command-status-tracker">
+                        <div class="tracker-steps">
+                            <div class="step-dot" id="step-sent"></div>
+                            <div class="step-dot" id="step-received"></div>
+                            <div class="step-dot" id="step-processing"></div>
+                            <div class="step-dot" id="step-executed"></div>
+                        </div>
+                        <div class="step-labels">
+                            <span>Sent</span>
+                            <span>Received</span>
+                            <span>Processing</span>
+                            <span>Executed</span>
+                        </div>
+                        <div style="font-size:0.75rem; color:var(--text2); margin-top:8px; text-align:center;" id="cc-cmd-status-text">
+                            No commands dispatched. Select a active device to execute.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- RIGHT PANEL: Telemetry & Evidence Vault -->
+        <section class="cc-panel right">
+            <!-- Telemetry Specifications -->
+            <div style="padding:16px 20px; border-bottom:1px solid var(--border);">
+                <div class="panel-header" style="padding:0; border-bottom:none;">Live Telemetry Details</div>
+                <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; margin-top:14px; font-size:0.8rem;">
+                    <div>
+                        <span style="color:var(--text3); font-size:0.7rem; text-transform:uppercase; display:block;">Platform</span>
+                        <strong id="cc-tel-platform">--</strong>
+                    </div>
+                    <div>
+                        <span style="color:var(--text3); font-size:0.7rem; text-transform:uppercase; display:block;">Battery</span>
+                        <strong id="cc-tel-battery">--</strong>
+                    </div>
+                    <div>
+                        <span style="color:var(--text3); font-size:0.7rem; text-transform:uppercase; display:block;">Network Status</span>
+                        <strong id="cc-tel-network">--</strong>
+                    </div>
+                    <div>
+                        <span style="color:var(--text3); font-size:0.7rem; text-transform:uppercase; display:block;">GPS Status</span>
+                        <strong id="cc-tel-gps">--</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Evidence Vault Grid -->
+            <div class="panel-header">Forensic Evidence & Threats</div>
+            <div class="panel-body" style="gap:10px;">
+                <div class="event-timeline" id="cc-evidence-timeline">
+                    <p style="color:var(--text3); text-align:center; padding-top:20px; font-size:0.75rem;">No telemetry evidence synchronized.</p>
+                </div>
+
+                <!-- Live Intruder Capture Photo -->
+                <div style="border-top:1px solid var(--border); padding-top:10px; display:flex; flex-direction:column; gap:8px;">
+                    <div style="font-size:0.75rem; text-transform:uppercase; font-weight:700; color:var(--text2);">Intruder Bio Capture</div>
+                    <div style="width:100%; height:140px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--bg3); display:flex; items-center:center; justify-content:center; overflow:hidden; position:relative;" id="cc-intruder-photo-container">
+                        <p style="color:var(--text3); font-size:0.75rem; position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); text-align:center; width:100%;">No biometric captures</p>
+                        <img id="cc-intruder-photo" src="" style="width:100%; height:100%; object-fit:cover; display:none;">
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- Modal confirmation dialogues -->
+<div id="cc-wipe-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); backdrop-filter:blur(10px); z-index:99999; align-items:center; justify-content:center; padding:24px;">
+    <div style="background:var(--bg2); border:1px solid var(--danger); border-radius:var(--radius); padding:24px; max-width:400px; width:100%; text-align:center; box-shadow:0 10px 40px rgba(0,0,0,0.5);">
+        <i class="fa-solid fa-triangle-exclamation" style="font-size:2.5rem; color:var(--danger); margin-bottom:16px;"></i>
+        <h3 style="font-family:'Orbitron', sans-serif; font-size:1.2rem; color:var(--text); margin-bottom:8px;">EXECUTE FACTORY RESET?</h3>
+        <p style="font-size:0.85rem; color:var(--text2); line-height:1.5; margin-bottom:20px;">This command will wipe all local databases and credentials. <strong>This cannot be undone.</strong></p>
+        <div style="display:flex; gap:12px;">
+            <button id="cc-btn-wipe-cancel" style="flex:1; padding:10px; border-radius:var(--radius-sm); border:1px solid var(--border); background:transparent; color:var(--text); cursor:pointer; font-weight:600;">Cancel</button>
+            <button id="cc-btn-wipe-confirm" style="flex:1; padding:10px; border-radius:var(--radius-sm); border:none; background:var(--danger); color:#fff; cursor:pointer; font-weight:700;">Initiate Wipe</button>
+        </div>
+    </div>
+</div>
+
+<script src="command_center_app.js"></script>
+</body>
+</html>

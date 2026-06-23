@@ -1407,6 +1407,14 @@ function initCommander() {
         const switchBtn = $('commander-btn-switch-mode');
         if (switchBtn) switchBtn.addEventListener('click', () => switchRole('tracker'));
 
+        // Redirect to Command Center Dashboard
+        const openCcBtn = $('btn-open-command-center');
+        if (openCcBtn) {
+            openCcBtn.addEventListener('click', () => {
+                window.location.href = 'command_center.html';
+            });
+        }
+
         // Render linked devices
         renderLinkedDevices();
 
