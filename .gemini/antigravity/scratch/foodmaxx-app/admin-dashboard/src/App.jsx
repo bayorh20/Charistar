@@ -25,6 +25,7 @@ const MarketingManager = lazy(() => import('./pages/MarketingManager'));
 const GlobalSettings   = lazy(() => import('./pages/GlobalSettings'));
 const AuditLogs        = lazy(() => import('./pages/AuditLogs'));
 const PageBuilder      = lazy(() => import('./pages/PageBuilder'));
+const PerformanceCenter = lazy(() => import('./pages/PerformanceCenter'));
 
 // ── Loading spinners ──────────────────────────────────────────────────────────
 const PageSpinner = () => (
@@ -92,6 +93,7 @@ const SUB_ROUTES = [
   { path: 'support',       Page: SupportChat      },
   { path: 'marketing',     Page: MarketingManager },
   { path: 'settings',      Page: GlobalSettings   },
+  { path: 'performance',   Page: PerformanceCenter },
   { path: 'audit-logs',    Page: AuditLogs        },
 ];
 

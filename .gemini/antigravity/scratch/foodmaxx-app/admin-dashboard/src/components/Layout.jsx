@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, Bell, Volume2, VolumeX, Sun, Moon, LogOut, 
   Menu, X, ClipboardList, Utensils, MessageSquare, Ticket, 
-  Users, Truck, Image, Settings, ShieldCheck, Flame, Star, AlertTriangle, Layers
+  Users, Truck, Image, Settings, ShieldCheck, Flame, Star, AlertTriangle, Layers, Activity
 } from 'lucide-react';
 import { useOrderAlert } from '../context/OrderAlertContext';
 import { auth } from '../firebase/config';
@@ -24,6 +24,7 @@ const NAV_ITEMS = [
   { path: '/support', label: 'Support Live Chat', icon: MessageSquare },
   { path: '/marketing', label: 'Marketing Manager', icon: Image },
   { path: '/settings', label: 'Global Config', icon: Settings },
+  { path: '/performance', label: 'Performance Center', icon: Activity },
   { path: '/audit-logs', label: 'Admin Audit Trail', icon: ShieldCheck }
 ];
 

@@ -6,7 +6,7 @@ import {
   Settings, Bell, Volume2, VolumeX, Sun, Moon, LogOut,
   Users, ChevronRight, X, AlertTriangle, Truck, Star,
   Ticket, ShieldCheck, Image, MoreHorizontal, CheckCircle2,
-  Package, RotateCcw, XCircle, Layers
+  Package, RotateCcw, XCircle, Layers, Activity
 } from 'lucide-react';
 import { useOrderAlert } from '../context/OrderAlertContext';
 import { useApp } from '../context/AppContext';
@@ -36,6 +36,7 @@ const MORE_ITEMS = [
   { path: '/affiliates',    label: 'Affiliates',        icon: Users },
   { path: '/audit-logs',    label: 'Audit Trail',       icon: ShieldCheck },
   { path: '/settings',      label: 'Settings',          icon: Settings },
+  { path: '/performance',   label: 'Performance',       icon: Activity },
 ];
 
 // ── Status update sheet options ───────────────────────────────────────────────
