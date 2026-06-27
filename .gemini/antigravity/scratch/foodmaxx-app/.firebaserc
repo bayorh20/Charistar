@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "orderfoodmaxx"
+  },
+  "targets": {
+    "orderfoodmaxx": {
+      "hosting": {
+        "customer": [
+          "orderfoodmaxx"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}
