@@ -68,8 +68,7 @@ export default function HeroSlider({ config }) {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.25 }}
               >
-                <video
-                  fetchpriority="high"
+                <video fetchpriority="high" disablePictureInPicture                   fetchpriority="high"
                   disablePictureInPicture
                   ref={idx === activeIndex ? videoRef : null}
                   src={item.url}
@@ -96,7 +95,7 @@ export default function HeroSlider({ config }) {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.25 }}
               >
-                <img src={item.image} alt={item.title} className="hero-slide-img" />
+                <img loading="lazy" decoding="async" src={item.image} alt={item.title} className="hero-slide-img" />
                 <div className="hero-slide-overlay">
                   <h3 className="hero-slide-title">{item.title}</h3>
                   <p className="hero-slide-desc">{item.desc}</p>

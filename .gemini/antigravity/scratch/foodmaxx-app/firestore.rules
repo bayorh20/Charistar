@@ -2,78 +2,90 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Helper function to verify if the user is an administrator
+    function isAdmin() {
+      return request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
     // ── Public read: menu, categories, settings ──────────────────────────────
-    // These must be readable without auth so the customer app can load the menu
-    // even before the user logs in (guest browsing).
+    // Only admins can write/modify menu items and categories.
     match /menu_items/{itemId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
     match /categories/{catId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
     match /settings/{docId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
     match /option_presets/{presetId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
-    // ── Orders: guests and registered users can create/read/update ───────────
+    // ── Orders: customers/guests can place and track their own orders ────────
     match /orders/{orderId} {
-      allow read, create, update: if true;
-      allow delete: if request.auth != null;
+      allow create: if true;
+      allow get: if true; // anyone can get a specific order if they know its ID (e.g. for guest tracking)
+      allow list: if isAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
+      allow update: if isAdmin() || (request.auth != null && resource.data.userId == request.auth.uid) || (resource.data.userId != null && resource.data.userId.startsWith('guest_'));
+      allow delete: if isAdmin();
     }
 
-    // ── Users: only the user themselves + authenticated sessions ─────────────
+    // ── Users: only the user themselves can read/write their own profiles ─────
     match /users/{userId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAdmin() || (request.auth != null && request.auth.uid == userId);
     }
 
-    // ── Admins: authenticated session check for login verification ──────────
+    // ── Admins: authenticated check. Writing restricted to admins + setup fallback
     match /admins/{adminId} {
-      allow read, write: if request.auth != null;
+      allow read: if request.auth != null;
+      allow write: if isAdmin() || (request.auth != null && request.auth.token.email == 'admin@foodmaxx.com');
     }
 
-    // ── Riders, Reviews, Coupons, Affiliates: authenticated only ─────────────
+    // ── Riders: admin only ────────────────────────────────────────────────────
     match /riders/{riderId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isAdmin();
     }
 
+    // ── Reviews: read public, write authenticated/guests ─────────────────────
     match /reviews/{reviewId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if request.auth != null || (request.resource.data.userId != null && request.resource.data.userId.startsWith('guest_'));
     }
 
+    // ── Coupons: read public, write admin ─────────────────────────────────────
     match /coupons/{couponId} {
       allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ── Affiliates: admin only ────────────────────────────────────────────────
+    match /affiliates/{affiliateId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ── Support chat: only the user themselves, guests, or admins ─────────────
+    match /support_chats/{chatId} {
+      allow read, write: if isAdmin() || (request.auth != null && request.auth.uid == chatId) || chatId.startsWith('guest_');
+    }
+
+    // ── Audit logs: write from authenticated sessions, read admin only ────────
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
       allow write: if request.auth != null;
     }
 
-    match /affiliates/{affiliateId} {
-      allow read, write: if request.auth != null;
-    }
-
-    // ── Support chat: guests and registered users ────────────────────────────
-    match /support_chats/{chatId} {
-      allow read, write: if true;
-    }
-
-    // ── Audit logs: write from any authenticated session, read admin only ────
-    match /audit_logs/{logId} {
-      allow read, write: if request.auth != null;
-    }
-
-    // ── Marketing: read public, write authenticated ───────────────────────────
+    // ── Marketing: read public, write admin ───────────────────────────────────
     match /marketing/{docId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
   }
 }

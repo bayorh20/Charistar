@@ -219,7 +219,7 @@ export default function ProfilePanel() {
                   >
                     <span style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}>
                       {userProfile.photo && (userProfile.photo.startsWith('/') || userProfile.photo.includes('.')) ? (
-                        <img src={userProfile.photo} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', backgroundColor: '#FFFFFF', filter: 'brightness(1.08) contrast(1.02)' }} />
+                        <img loading="lazy" decoding="async" src={userProfile.photo} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', backgroundColor: '#FFFFFF', filter: 'brightness(1.08) contrast(1.02)' }} />
                       ) : (
                         userProfile.photo || '🍔'
                       )}
@@ -327,7 +327,7 @@ export default function ProfilePanel() {
                       >
                         <div className="user-avatar-circle" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           {userProfile.photo && (userProfile.photo.startsWith('/') || userProfile.photo.includes('.')) ? (
-                            <img src={userProfile.photo} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', backgroundColor: '#FFFFFF', filter: 'brightness(1.08) contrast(1.02)' }} />
+                            <img loading="lazy" decoding="async" src={userProfile.photo} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', backgroundColor: '#FFFFFF', filter: 'brightness(1.08) contrast(1.02)' }} />
                           ) : (
                             userProfile.photo || '🍔'
                           )}

@@ -96,11 +96,11 @@ const CategoryImage = ({ src, videoUrl, alt, fallbackIcon }) => {
   }
   
   return (
-    <img 
+    <img loading="lazy" decoding="async" 
       src={src} 
       alt={alt} 
-      loading="lazy"
-      decoding="async"
+     
+     
       style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
       onError={() => setError(true)}
     />

@@ -466,8 +466,8 @@ const FoodCard = React.memo(function FoodCard({
       {/* Image */}
       <div className="card-image-wrapper-standalone">
         <img
-          loading="lazy"
-          decoding="async"
+         
+         
           src={isVisible ? getOptimizedImageUrl(item.image, 360, 50) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'}
           alt={item.name}
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', borderRadius: '20px' }}

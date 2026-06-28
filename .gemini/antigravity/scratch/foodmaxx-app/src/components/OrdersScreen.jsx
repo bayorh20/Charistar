@@ -96,7 +96,7 @@ export default function OrdersScreen() {
               <div className="history-card-body" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
                 {(currentOrder.cart || currentOrder.items || []).map((food, fIdx) => (
                   <div key={fIdx} className="history-food-line" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <img 
+                    <img loading="lazy" decoding="async" 
                       src={food.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80'} 
                       alt={food.name}
                       style={{ width: '28px', height: '28px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }}
@@ -178,7 +178,7 @@ export default function OrdersScreen() {
                     <div className="history-card-body" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
                       {orderItems.slice(0, 3).map((food, fIdx) => (
                         <div key={fIdx} className="history-food-line" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                          <img 
+                          <img loading="lazy" decoding="async" 
                             src={food.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80'} 
                             alt={food.name}
                             style={{ width: '28px', height: '28px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }}
@@ -263,7 +263,7 @@ export default function OrdersScreen() {
               <div style={{ borderTop: '1px dashed var(--border-color)', borderBottom: '1px dashed var(--border-color)', padding: '16px 0', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {(selectedReceipt.cart || selectedReceipt.items || []).map((item, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <img 
+                    <img loading="lazy" decoding="async" 
                       src={item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80'} 
                       alt={item.name}
                       style={{ width: '32px', height: '32px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }}

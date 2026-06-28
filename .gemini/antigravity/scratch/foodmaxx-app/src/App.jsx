@@ -1242,7 +1242,7 @@ function AppContent() {
                   cursor: 'pointer'
                 }}
               >
-                <img 
+                <img loading="lazy" decoding="async" 
                   src={cartNotification.image || '/icon-192.png'} 
                   alt={cartNotification.name} 
                   style={{ width: '40px', height: '40px', borderRadius: '10px', objectFit: 'cover' }} 
@@ -1344,7 +1344,7 @@ function AppContent() {
                 <div className="nav-tab-content">
                   <div className="nav-tab-icon-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '40px' }}>
                     {userProfile.photo && (userProfile.photo.startsWith('/') || userProfile.photo.includes('.')) ? (
-                      <img 
+                      <img loading="lazy" decoding="async" 
                         src={userProfile.photo} 
                         alt="Profile" 
                         style={{ 

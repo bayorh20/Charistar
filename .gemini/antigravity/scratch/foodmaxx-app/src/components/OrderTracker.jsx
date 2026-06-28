@@ -282,7 +282,7 @@ export default function OrderTracker() {
           {currentOrder.cart.map((food, fIdx) => (
             <div key={fIdx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', textAlign: 'left' }}>
-                <img 
+                <img loading="lazy" decoding="async" 
                   src={food.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=150&q=80'} 
                   alt={food.name}
                   style={{ width: '28px', height: '28px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }}
