@@ -56,6 +56,19 @@ export const AppProvider = ({ children }) => {
     return 'light';
   };
   
+  const [guestUid] = useState(() => {
+    try {
+      let uid = localStorage.getItem('fm_guest_uid');
+      if (!uid) {
+        uid = 'guest_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        localStorage.setItem('fm_guest_uid', uid);
+      }
+      return uid;
+    } catch {
+      return 'guest_temp_' + Math.random().toString(36).substring(2, 10);
+    }
+  });
+
   const [cart, setCart] = useState(() => {
     try {
       const saved = localStorage.getItem('fm_cart');
@@ -339,50 +352,49 @@ export const AppProvider = ({ children }) => {
         unsubscribeOrders();
         unsubscribeOrders = null;
       }
-      if (user) {
-        const q = query(collection(db, 'orders'), where('userId', '==', user.uid));
-        unsubscribeOrders = onSnapshot(q, (snapshot) => {
-          const list = [];
-          snapshot.forEach(docSnap => {
-            list.push({ id: docSnap.id, ...docSnap.data() });
-          });
-          
-          list.sort((a, b) => {
-            const dateA = a.createdAt ? new Date(a.createdAt) : 0;
-            const dateB = b.createdAt ? new Date(b.createdAt) : 0;
-            return dateB - dateA;
-          });
-
-          setOrderHistory(list);
-          localStorage.setItem('fm_orders', JSON.stringify(list));
-
-          // Sync current active order if any (statusIndex < 4 && statusIndex >= 0)
-          const active = list.find(o => typeof o.statusIndex === 'number' && o.statusIndex < 4 && o.statusIndex >= 0);
-          if (active) {
-            setCurrentOrder(active);
-          } else {
-            // Keep completed/rated order if it was selected, so user can see rating card
-            setCurrentOrder(prev => {
-              if (prev) {
-                const match = list.find(o => o.id === prev.id);
-                if (match) return match;
-              }
-              return null;
-            });
-          }
-        }, (err) => {
-          console.warn("Firestore orders snapshot failed:", err);
+      
+      const targetUserId = user ? user.uid : guestUid;
+      const q = query(collection(db, 'orders'), where('userId', '==', targetUserId));
+      
+      unsubscribeOrders = onSnapshot(q, (snapshot) => {
+        const list = [];
+        snapshot.forEach(docSnap => {
+          list.push({ id: docSnap.id, ...docSnap.data() });
         });
-      } else {
-        setOrderHistory([]);
-      }
+        
+        list.sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt) : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt) : 0;
+          return dateB - dateA;
+        });
+
+        setOrderHistory(list);
+        localStorage.setItem('fm_orders', JSON.stringify(list));
+
+        // Sync current active order if any (statusIndex < 4 && statusIndex >= 0)
+        const active = list.find(o => typeof o.statusIndex === 'number' && o.statusIndex < 4 && o.statusIndex >= 0);
+        if (active) {
+          setCurrentOrder(active);
+        } else {
+          // Keep completed/rated order if it was selected, so user can see rating card
+          setCurrentOrder(prev => {
+            if (prev) {
+              const match = list.find(o => o.id === prev.id);
+              if (match) return match;
+            }
+            return null;
+          });
+        }
+      }, (err) => {
+        console.warn("Firestore orders snapshot failed:", err);
+      });
     });
 
     return () => {
       if (unsubscribeOrders) unsubscribeOrders();
       unsubscribeAuth();
     };
-  }, []);
+  }, [guestUid]);
 
   // Real-time synchronization of menu items, categories, and settings from Firestore
   useEffect(() => {
@@ -997,7 +1009,7 @@ export const AppProvider = ({ children }) => {
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const orderData = {
       id: orderId,
-      userId: auth?.currentUser?.uid || 'guest',
+      userId: auth?.currentUser?.uid || guestUid,
       customerName: paymentDetails.name || userProfile.name || 'Guest User',
       customerPhone: paymentDetails.phone || userProfile.phone || '',
       cart: cart.map(item => ({
@@ -1107,7 +1119,7 @@ export const AppProvider = ({ children }) => {
     });
 
     setActiveScreen('orders');
-  }, [cart, selectedAddress, soundEnabled, unlockedPerks, getCartTotal, userProfile, userPoints]);
+  }, [cart, selectedAddress, soundEnabled, unlockedPerks, getCartTotal, userProfile, userPoints, guestUid]);
 
   const updateProfile = useCallback((updated) => {
     setUserProfile(prev => {

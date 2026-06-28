@@ -304,6 +304,39 @@ const PageBuilder = () => {
   const { pageLayout, categories, logAction } = useApp();
   const toast = useToast();
 
+  const animationsRef = useRef(null);
+  const [showAnimationsPreview, setShowAnimationsPreview] = useState(false);
+
+  // Intersection observer to track animations panel visibility and auto-trigger transition preview
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('IntersectionObserver' in window)) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShowAnimationsPreview(true);
+          // Trigger transition animation preview automatically on intersection
+          setActivePreviewScreen('explore');
+          setTimeout(() => {
+            setActivePreviewScreen('home');
+          }, 800);
+        } else {
+          setShowAnimationsPreview(false);
+        }
+      },
+      {
+        threshold: 0.2
+      }
+    );
+
+    const el = animationsRef.current;
+    if (el) {
+      observer.observe(el);
+    }
+    return () => {
+      if (el) observer.unobserve(el);
+    };
+  }, []);
+
   const [sections, setSections] = useState([]);
   const [animations, setAnimations] = useState({ mode: 'slide-left', duration: 0.35 });
   const [selectedAnimationCategory, setSelectedAnimationCategory] = useState('normal');
@@ -1215,7 +1248,7 @@ const PageBuilder = () => {
         </div>
 
         {/* Animation Settings */}
-        <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm p-6 space-y-4">
+        <div ref={animationsRef} className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-extrabold text-sm text-slate-800 dark:text-white flex items-center gap-2">
               <Sliders size={16} className="text-orange-500" />
@@ -1432,7 +1465,11 @@ const PageBuilder = () => {
 
       {/* ── Right: Live Preview ────────────────────────────────────────────────── */}
       <div className="relative">
-        <div className="xl:sticky xl:top-6 space-y-6">
+        <div className={`xl:sticky space-y-6 transition-all duration-700 ease-in-out ${
+          showAnimationsPreview 
+            ? 'xl:top-[160px] xl:translate-y-[80px] xl:scale-[0.98]' 
+            : 'xl:top-6 xl:translate-y-0 xl:scale-100'
+        }`}>
 
         {/* Phone Preview */}
         <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm p-6">

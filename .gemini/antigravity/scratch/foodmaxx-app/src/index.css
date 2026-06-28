@@ -744,7 +744,7 @@ button, a, .category-card, .food-card, .premium-food-card, .food-list-card, .nav
 .category-bar.layout-scroll .category-card {
   scroll-snap-align: start;
   flex-shrink: 0;
-  width: 72px;
+  width: calc((100% - 64px) / 4.5);
   height: 80px;
 }
 
@@ -766,7 +766,7 @@ button, a, .category-card, .food-card, .premium-food-card, .food-list-card, .nav
 .category-bar.layout-two-row .category-card {
   scroll-snap-align: start;
   flex-shrink: 0;
-  width: 72px;
+  width: calc((100% - 64px) / 4.5);
   height: 80px;
 }
 
@@ -837,28 +837,32 @@ button, a, .category-card, .food-card, .premium-food-card, .food-list-card, .nav
   100% { box-shadow: 0 10px 22px var(--primary-glow), 0 0 10px var(--primary); }
 }
 
-/* White rounded rectangle container inside the card */
+/* Transparent container inside the card */
 .category-card-circle {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
-  background: #FFFFFF;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 6px;
-  box-shadow: 0 1.5px 5px rgba(0, 0, 0, 0.02);
   transform: translateZ(8px); /* Elevate inside the 3D layer */
   transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.category-card-circle svg,
-.category-card-circle video,
-.category-card-circle img {
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
+.category-card-circle img,
+.category-card-circle video {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
   object-fit: cover;
+  border: 1.5px solid rgba(0, 0, 0, 0.1); /* Sleek picture frame border */
+  background: transparent;
+  box-sizing: border-box;
+}
+
+.category-card-circle svg {
+  width: 36px;
+  height: 36px;
 }
 
 .category-card:hover .category-card-circle {
