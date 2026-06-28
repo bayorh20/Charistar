@@ -5,6 +5,7 @@ import { playTick } from '../utils/sound';
 import { motion, AnimatePresence } from 'framer-motion';
 import FoodCard from './FoodCard';
 import CategoryScroller, { getPastelColor } from './CategoryScroller';
+import SkeletonCard from './SkeletonCard';
 
 export default function SearchScreen() {
   const {
@@ -375,16 +376,7 @@ export default function SearchScreen() {
           </div>
           <div className="food-grid">
             {[1, 2].map((n) => (
-              <div key={n} className="skeleton-card">
-                <div className="skeleton-image skeleton-shimmer" />
-                <div className="skeleton-title skeleton-shimmer" />
-                <div className="skeleton-text skeleton-shimmer" />
-                <div className="skeleton-tags">
-                  <div className="skeleton-tag skeleton-shimmer" />
-                  <div className="skeleton-tag skeleton-shimmer" />
-                </div>
-                <div className="skeleton-fab skeleton-shimmer" />
-              </div>
+              <SkeletonCard key={n} viewMode="grid" />
             ))}
           </div>
         </div>

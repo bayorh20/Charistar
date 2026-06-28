@@ -2207,6 +2207,54 @@ button, a, .category-card, .food-card, .premium-food-card, .food-list-card, .nav
   height: 290px;
 }
 
+/* Grid Skeleton Modifiers */
+.skeleton-card.grid-skeleton {
+  border-radius: 20px;
+  height: 280px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+.skeleton-card.grid-skeleton .skeleton-image {
+  height: 190px;
+  border-radius: 20px;
+  margin-bottom: 8px;
+}
+.skeleton-grid-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4px;
+}
+
+/* List Skeleton Modifiers */
+.skeleton-card.list-skeleton {
+  height: 140px;
+  border-radius: 20px;
+  position: relative;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 0;
+  box-shadow: var(--shadow-sm);
+}
+.skeleton-list-overlay {
+  position: absolute;
+  bottom: 12px;
+  left: 16px;
+  right: 60px;
+  z-index: 2;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.skeleton-list-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,

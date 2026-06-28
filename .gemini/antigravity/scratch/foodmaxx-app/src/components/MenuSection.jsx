@@ -6,6 +6,7 @@ import { playTick, playPop } from '../utils/sound';
 import HeroSlider from './HeroSlider';
 import FoodCard from './FoodCard';
 import CategoryScroller from './CategoryScroller';
+import SkeletonCard from './SkeletonCard';
 
 function RollingDigit({ digit }) {
   return (
@@ -434,28 +435,7 @@ export default function MenuSection() {
             {isLoading ? (
               <div className="food-grid">
                 {[1, 2, 3, 4].map((n) => (
-                  <div 
-                    key={n} 
-                    className="skeleton-card" 
-                    style={{ 
-                      height: '280px', 
-                      background: 'var(--bg-card)', 
-                      border: '1px solid var(--border-color)', 
-                      borderRadius: '18px', 
-                      overflow: 'hidden',
-                      display: 'flex',
-                      flexDirection: 'column'
-                    }}
-                  >
-                    <div className="skeleton-image skeleton-shimmer" style={{ width: '100%', height: '160px' }}></div>
-                    <div style={{ padding: '12px', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                      <div className="skeleton-title skeleton-shimmer" style={{ height: '16px', width: '70%', borderRadius: '4px' }}></div>
-                      <div className="skeleton-text skeleton-shimmer" style={{ height: '12px', width: '40%', borderRadius: '4px' }}></div>
-                      <div className="skeleton-tags" style={{ display: 'flex', gap: '6px', marginTop: 'auto' }}>
-                        <div className="skeleton-tag skeleton-shimmer" style={{ height: '20px', width: '50px', borderRadius: '10px' }}></div>
-                      </div>
-                    </div>
-                  </div>
+                  <SkeletonCard key={n} viewMode={viewMode} />
                 ))}
               </div>
             ) : filteredItems.length > 0 ? (
