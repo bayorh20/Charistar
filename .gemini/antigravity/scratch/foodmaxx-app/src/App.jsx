@@ -1,5 +1,6 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AppProvider, AppContext } from './context/AppContext';
+import { trackPageView } from './utils/analytics';
 import Header from './components/Header';
 import MenuSection from './components/MenuSection';
 import CartDrawer from './components/CartDrawer';
@@ -138,6 +139,14 @@ function AppContent() {
     setCartNotification,
     pageLayout
   } = useContext(AppContext);
+
+  // ── Analytics Page View Tracking ──────────────────────────────────────────
+  useEffect(() => {
+    let screenName = activeScreen;
+    if (showProfile) screenName = 'profile';
+    else if (showSupport) screenName = 'support';
+    trackPageView(screenName);
+  }, [activeScreen, showProfile, showSupport]);
 
   useEffect(() => {
     if (marketingConfig?.appName) {

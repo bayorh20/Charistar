@@ -177,6 +177,35 @@ const Orders = () => {
     }
   };
 
+  const handleAddCustomLog = async () => {
+    if (!statusNote.trim() || !selectedOrder) return;
+    try {
+      const orderRef = doc(db, 'orders', selectedOrder.id);
+      const logEntry = {
+        event: 'Custom Status Message',
+        timestamp: new Date().toISOString(),
+        actor: 'Super Admin',
+        note: statusNote.trim()
+      };
+      await updateDoc(orderRef, {
+        activityLogs: arrayUnion(logEntry)
+      });
+      playSuccessChime();
+      logAction(`Added custom status note to Order #${selectedOrder.id}: "${statusNote.trim()}"`);
+      
+      // Update local preview state
+      setSelectedOrder(prev => ({
+        ...prev,
+        activityLogs: [...(prev.activityLogs || []), logEntry]
+      }));
+      setStatusNote('');
+      alert('Custom status message added.');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to add custom status message.');
+    }
+  };
+
   // Filter queue
   const filteredList = (orders || []).filter(order => {
     const matchesSearch = order.id.toLowerCase().includes(search.toLowerCase()) || 
@@ -417,14 +446,24 @@ const Orders = () => {
               <div className="space-y-2.5">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Change Status</p>
                 
-                {/* Note input */}
-                <input 
-                  type="text" 
-                  value={statusNote}
-                  onChange={(e) => setStatusNote(e.target.value)}
-                  placeholder="Optional log message (e.g. Cooking started)"
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:outline-none"
-                />
+                {/* Note input with submit button */}
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    value={statusNote}
+                    onChange={(e) => setStatusNote(e.target.value)}
+                    placeholder="Optional log message (e.g. Cooking started)"
+                    className="flex-1 min-w-0 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomLog}
+                    disabled={!statusNote.trim()}
+                    className="px-4 py-2 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-200 dark:disabled:bg-slate-700 text-white disabled:text-slate-400 dark:disabled:text-slate-500 rounded-xl text-xs font-black uppercase transition-all shadow-xs shrink-0"
+                  >
+                    Post Log
+                  </button>
+                </div>
 
                 {/* Status Options */}
                 <div className="grid grid-cols-2 gap-2">

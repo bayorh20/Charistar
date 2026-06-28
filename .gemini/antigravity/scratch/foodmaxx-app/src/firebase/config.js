@@ -42,4 +42,4 @@ try {
   console.error('[Firebase] Initialization error:', err);
 }
 
-export { db, auth };
+export { db, auth, app };

@@ -97,6 +97,8 @@ const SUB_ROUTES = [
   { path: 'audit-logs',    Page: AuditLogs        },
 ];
 
+import AnalyticsTracker from './components/AnalyticsTracker';
+
 // ── Root app ──────────────────────────────────────────────────────────────────
 function App() {
   const isMobile = useIsMobile();
@@ -106,6 +108,7 @@ function App() {
       <AppProvider>
         <OrderAlertProvider>
           <HashRouter>
+            <AnalyticsTracker />
             <Routes>
               {/* Public */}
               <Route

@@ -35,9 +35,9 @@ export default defineConfig({
       manifest: {
         name: 'FoodMaxx - Ibadan Delivery',
         short_name: 'FoodMaxx',
-        description: 'Premium food delivery in Ibadan. Order amala, grills, and more!',
+        description: 'Premium food delivery in Ibadan.',
         theme_color: '#FF5B26',
-        background_color: '#FDFDFD',
+        background_color: '#ffffffff',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',

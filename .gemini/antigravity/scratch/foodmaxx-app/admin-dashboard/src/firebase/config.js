@@ -35,4 +35,4 @@ try {
   console.error('[Admin Firebase] Initialization error:', err);
 }
 
-export { db, auth, storage };
+export { db, auth, storage, app };

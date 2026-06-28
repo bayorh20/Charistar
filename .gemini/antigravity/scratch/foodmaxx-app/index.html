@@ -1,103 +1,114 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="FoodMaxx" />
-    <link rel="theme-color" content="#FF5B26" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <title>FoodMaxx Food Delivery - Ibadan</title>
-    <meta name="description" content="Premium food delivery within Ibadan. World class standard dishes, fast dispatch, and live order tracking." />
-    <link rel="apple-touch-icon" href="/icon-192.png">
-    <link rel="mask-icon" href="/favicon.svg" color="#FF6833">
 
-    <script>
-      // ── Service Worker Cache-Busting on Release ───────────────────────────
-      // Increment this version whenever a critical update is deployed.
-      // Forces the browser to unregister the old SW, clear caches, and reload.
-      var APP_VERSION = 'v5.3.5';
-      try {
-        if (localStorage.getItem('fm_app_version') !== APP_VERSION) {
-          localStorage.setItem('fm_app_version', APP_VERSION);
-          if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-              var promises = [];
-              for (var i = 0; i < registrations.length; i++) {
-                promises.push(registrations[i].unregister());
-              }
-              if (window.caches) {
-                promises.push(
-                  caches.keys().then(function(names) {
-                    return Promise.all(names.map(function(name) { return caches.delete(name); }));
-                  })
-                );
-              }
-              Promise.all(promises).then(function() {
-                console.log('[Cache] Stale PWA cache cleared for version: ' + APP_VERSION);
-                window.location.reload();
-              }).catch(function() {
-                window.location.reload();
-              });
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="FoodMaxx" />
+  <link rel="theme-color" content="#FF5B26" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <title>FoodMaxx Food Delivery - Ibadan</title>
+  <meta name="description"
+    content="Premium food delivery within Ibadan. World class standard dishes, fast dispatch, and live order tracking." />
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="mask-icon" href="/favicon.svg" color="#FF6833">
+
+  <script>
+    // ── Service Worker Cache-Busting on Release ───────────────────────────
+    // Increment this version whenever a critical update is deployed.
+    // Forces the browser to unregister the old SW, clear caches, and reload.
+    var APP_VERSION = 'v5.3.5';
+    try {
+      if (localStorage.getItem('fm_app_version') !== APP_VERSION) {
+        localStorage.setItem('fm_app_version', APP_VERSION);
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function (registrations) {
+            var promises = [];
+            for (var i = 0; i < registrations.length; i++) {
+              promises.push(registrations[i].unregister());
+            }
+            if (window.caches) {
+              promises.push(
+                caches.keys().then(function (names) {
+                  return Promise.all(names.map(function (name) { return caches.delete(name); }));
+                })
+              );
+            }
+            Promise.all(promises).then(function () {
+              console.log('[Cache] Stale PWA cache cleared for version: ' + APP_VERSION);
+              window.location.reload();
+            }).catch(function () {
+              window.location.reload();
             });
-          }
+          });
         }
-      } catch (err) {
-        console.error('Cache bust failed:', err);
       }
+    } catch (err) {
+      console.error('Cache bust failed:', err);
+    }
 
-      // Automatically detect chunk load / network errors and recover by clearing service worker cache
-      window.addEventListener('error', function(e) {
-        if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
-          console.warn('Resource load failed, checking network status...', e.target.src || e.target.href);
-          
-          // CRITICAL: If the user is offline, DO NOT unregister the service worker or flush caches.
-          if (navigator.onLine === false) {
-            console.warn('Resource fetch failed because user is offline. Retaining caches.');
-            return;
-          }
-          
-          // Check if we already reloaded recently to prevent infinite reload loops
-          var urlParams = new URLSearchParams(window.location.search);
-          if (urlParams.has('r') || window.location.hash.indexOf('r=1') !== -1) {
-            console.error('Already attempted recovery reload. Aborting reload loop to prevent browser freeze.');
-            return;
-          }
-
-          console.warn('Resource load failed while online. Flushing PWA cache to recover...');
-          
-          var performReload = function() {
-            var separator = window.location.href.indexOf('?') !== -1 ? '&' : '?';
-            window.location.href = window.location.href + separator + 'r=1';
-          };
-
-          if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-              var promises = [];
-              for (var i = 0; i < registrations.length; i++) {
-                promises.push(registrations[i].unregister());
-              }
-              if (window.caches) {
-                promises.push(
-                  caches.keys().then(function(names) {
-                    return Promise.all(names.map(function(name) { return caches.delete(name); }));
-                  })
-                );
-              }
-              Promise.all(promises).then(performReload).catch(performReload);
-            }).catch(performReload);
-          } else {
-            performReload();
-          }
+    // Automatically detect chunk load / network errors and recover by clearing service worker cache
+    window.addEventListener('error', function (e) {
+      if (e.target && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+        var src = e.target.src || e.target.href;
+        if (src && !src.startsWith(window.location.origin) && !src.startsWith('/')) {
+          console.warn('Ignoring third-party/external resource load failure:', src);
+          return;
         }
-      }, true);
-    </script>
 
-  </head>
-  <body style="background-color: #FDFDFD; margin: 0;">
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+        console.warn('Resource load failed, checking network status...', src);
+
+        // CRITICAL: If the user is offline, DO NOT unregister the service worker or flush caches.
+        if (navigator.onLine === false) {
+          console.warn('Resource fetch failed because user is offline. Retaining caches.');
+          return;
+        }
+
+        // Check if we already reloaded recently to prevent infinite reload loops
+        var urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('r') || window.location.hash.indexOf('r=1') !== -1) {
+          console.error('Already attempted recovery reload. Aborting reload loop to prevent browser freeze.');
+          return;
+        }
+
+        console.warn('Resource load failed while online. Flushing PWA cache to recover...');
+
+        var performReload = function () {
+          var separator = window.location.href.indexOf('?') !== -1 ? '&' : '?';
+          window.location.href = window.location.href + separator + 'r=1';
+        };
+
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function (registrations) {
+            var promises = [];
+            for (var i = 0; i < registrations.length; i++) {
+              promises.push(registrations[i].unregister());
+            }
+            if (window.caches) {
+              promises.push(
+                caches.keys().then(function (names) {
+                  return Promise.all(names.map(function (name) { return caches.delete(name); }));
+                })
+              );
+            }
+            Promise.all(promises).then(performReload).catch(performReload);
+          }).catch(performReload);
+        } else {
+          performReload();
+        }
+      }
+    }, true);
+  </script>
+
+</head>
+
+<body style="background-color: #ffffff; margin: 0;">
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
 </html>

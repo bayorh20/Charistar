@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   esbuild: {
@@ -10,36 +9,7 @@ export default defineConfig({
   base: './',
   plugins: [
     react(),
-    tailwindcss(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      manifest: {
-        name: 'FoodMaxx Admin',
-        short_name: 'FM Admin',
-        description: 'FoodMaxx restaurant admin dashboard',
-        theme_color: '#ea580c',
-        background_color: '#0f172a',
-        display: 'standalone',
-        orientation: 'portrait',
-        start_url: '/',
-        scope: '/',
-        icons: [
-          { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
-        ]
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
-        navigateFallback: '/index.html',
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/firestore\.googleapis\.com\/.*/i,
-            handler: 'NetworkFirst',
-            options: { cacheName: 'firestore-cache' }
-          }
-        ]
-      }
-    })
+    tailwindcss()
   ],
   build: {
     chunkSizeWarningLimit: 600,

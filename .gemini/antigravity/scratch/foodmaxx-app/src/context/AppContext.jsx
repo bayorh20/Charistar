@@ -5,6 +5,7 @@ import { safeStorage as localStorage } from '../utils/storage';
 import { db, auth } from '../firebase/config';
 import { doc, setDoc, getDoc, updateDoc, onSnapshot, collection, query, where } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { trackEvent, identifyUser } from '../utils/analytics';
 
 export const AppContext = createContext();
 
@@ -923,6 +924,13 @@ export const AppProvider = ({ children }) => {
       id: Date.now()
     });
 
+    trackEvent('add_to_cart', {
+      item_id: item.id,
+      item_name: item.name,
+      price: itemTotalPrice,
+      quantity
+    });
+
     setCart(prevCart => {
       const existingItemIndex = prevCart.findIndex(cartItem => cartItem.uniqueId === uniqueId);
       playPop(soundEnabled);
@@ -945,6 +953,7 @@ export const AppProvider = ({ children }) => {
   }, [soundEnabled]);
 
   const removeFromCart = useCallback((uniqueId) => {
+    trackEvent('remove_from_cart', { unique_id: uniqueId });
     setCart(prevCart => prevCart.filter(item => item.uniqueId !== uniqueId));
     playPop(soundEnabled);
   }, [soundEnabled]);
@@ -1027,6 +1036,13 @@ export const AppProvider = ({ children }) => {
     if (paymentDetails.street) {
       setSelectedAddress(orderAddress);
     }
+
+    trackEvent('purchase', {
+      transaction_id: orderId,
+      value: total,
+      currency: 'NGN',
+      items: cart.map(i => ({ item_id: i.id, item_name: i.name, quantity: i.quantity, price: i.price }))
+    });
 
     const pointsEarned = Math.floor(total / 1000) * 10;
     

@@ -4,6 +4,7 @@ import {
   collection, onSnapshot, doc, setDoc, updateDoc, 
   deleteDoc, addDoc, query, orderBy, limit 
 } from 'firebase/firestore';
+import { trackEvent } from '../utils/analytics';
 
 const AppContext = createContext();
 
@@ -48,6 +49,8 @@ export const AppProvider = ({ children }) => {
     return true;
   });
 
+
+
   // ── Log administrative actions ───────────────────────────────────────────
   const logAction = useCallback(async (actionDesc, actorName = 'Super Admin') => {
     if (!db) return;
@@ -56,6 +59,10 @@ export const AppProvider = ({ children }) => {
         action: actionDesc,
         actor: actorName,
         timestamp: new Date().toISOString()
+      });
+      trackEvent('admin_action', {
+        action_description: actionDesc,
+        actor: actorName
       });
     } catch (err) {
       console.error('Failed to write audit log:', err);
