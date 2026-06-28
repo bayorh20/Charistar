@@ -52,6 +52,7 @@ const AuthLoader = () => (
 // ── Auth guard ────────────────────────────────────────────────────────────────
 const ProtectedRoute = ({ children }) => {
   const [user, setUser] = useState(undefined);
+  const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
     if (!auth) {
@@ -59,10 +60,24 @@ const ProtectedRoute = ({ children }) => {
       return;
     }
     const unsub = auth.onAuthStateChanged((u) => setUser(u ?? null));
-    return unsub;
+    
+    // 10-second timeout guard
+    const timer = setTimeout(() => {
+      setTimedOut(true);
+    }, 10000);
+
+    return () => {
+      unsub();
+      clearTimeout(timer);
+    };
   }, []);
 
-  if (user === undefined) return <AuthLoader />;
+  if (user === undefined) {
+    if (timedOut) {
+      return <Navigate to="/login?timeout=1" replace />;
+    }
+    return <AuthLoader />;
+  }
   if (!user) return <Navigate to="/login" replace />;
   return children;
 };

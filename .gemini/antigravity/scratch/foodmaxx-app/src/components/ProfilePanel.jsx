@@ -8,6 +8,20 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { playTick } from '../utils/sound';
 
+const StylizedAvatarFallback = () => (
+  <svg viewBox="0 0 100 100" fill="none" style={{ width: '100%', height: '100%', display: 'block', borderRadius: '50%' }}>
+    <defs>
+      <linearGradient id="avatarGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#FF8F50" />
+        <stop offset="100%" stopColor="#FF5B26" />
+      </linearGradient>
+    </defs>
+    <circle cx="50" cy="50" r="50" fill="url(#avatarGrad)" />
+    <circle cx="50" cy="38" r="16" fill="#FFFFFF" opacity="0.95" />
+    <path d="M20 78 C20 62, 32 58, 50 58 C68 58, 80 62, 80 78 C80 84, 80 84, 80 84 H20 S20 84, 20 78 Z" fill="#FFFFFF" opacity="0.95" />
+  </svg>
+);
+
 export default function ProfilePanel() {
   const [profileScrollY, setProfileScrollY] = useState(0);
   const {
@@ -221,7 +235,7 @@ export default function ProfilePanel() {
                       {userProfile.photo && (userProfile.photo.startsWith('/') || userProfile.photo.includes('.')) ? (
                         <img loading="lazy" decoding="async" src={userProfile.photo} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', backgroundColor: '#FFFFFF', filter: 'brightness(1.08) contrast(1.02)' }} />
                       ) : (
-                        userProfile.photo || '🍔'
+                        <StylizedAvatarFallback />
                       )}
                     </span>
                     <div className="header-mini-avatar-ring"></div>
@@ -329,7 +343,7 @@ export default function ProfilePanel() {
                           {userProfile.photo && (userProfile.photo.startsWith('/') || userProfile.photo.includes('.')) ? (
                             <img loading="lazy" decoding="async" src={userProfile.photo} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', backgroundColor: '#FFFFFF', filter: 'brightness(1.08) contrast(1.02)' }} />
                           ) : (
-                            userProfile.photo || '🍔'
+                            <StylizedAvatarFallback />
                           )}
                         </div>
                         <div className="avatar-pulse-circle"></div>

@@ -5,6 +5,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase/config';
 import { ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
 import { playSuccessChime } from '../utils/sound';
+import { motion } from 'framer-motion';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -14,8 +15,13 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  // Redirect if already logged in
+  // Redirect if already logged in or handle timeout params
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('timeout') === '1') {
+      setError('Authentication connection timed out. Please check your network connection and try again.');
+    }
+
     const unsubscribe = auth?.onAuthStateChanged((user) => {
       if (user) {
         navigate('/');
@@ -92,7 +98,12 @@ const Login = () => {
       <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-orange-500/10 rounded-full blur-[140px] pointer-events-none"></div>
       <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] bg-red-600/10 rounded-full blur-[140px] pointer-events-none"></div>
 
-      <div className="bg-white/95 backdrop-blur-md rounded-3xl border border-slate-100 shadow-2xl max-w-md w-full p-8 transition-all relative">
+      <motion.div 
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 180, damping: 20 }}
+        className="bg-white/95 backdrop-blur-md rounded-3xl border border-slate-100 shadow-2xl max-w-md w-full p-8 transition-all relative"
+      >
         <div className="flex flex-col items-center gap-2 mb-6">
           <span className="text-4xl">🍔</span>
           <h2 className="text-2xl font-black tracking-tight text-slate-800">
@@ -121,7 +132,7 @@ const Login = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@foodmaxx.com"
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+              className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
             />
           </div>
 
@@ -135,7 +146,7 @@ const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
+              className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-800 focus:outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 transition-all"
             />
           </div>
 
@@ -157,10 +168,12 @@ const Login = () => {
             </a>
           </div>
 
-          <button
+          <motion.button
             type="submit"
             disabled={loading}
-            className="w-full mt-4 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 text-white py-3.5 rounded-2xl font-black text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-orange-500/10 hover:shadow-orange-500/20"
+            whileHover={{ scale: 1.015 }}
+            whileTap={{ scale: 0.985 }}
+            className="w-full mt-4 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-300 text-white py-3.5 rounded-2xl font-black text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-orange-500/10 hover:shadow-orange-500/20 cursor-pointer"
           >
             {loading ? (
               <>
@@ -173,7 +186,7 @@ const Login = () => {
                 <span>Authorize Login</span>
               </>
             )}
-          </button>
+          </motion.button>
         </form>
 
         <div className="mt-8 text-center border-t border-slate-50 pt-4">
@@ -181,7 +194,7 @@ const Login = () => {
             Protected by Cloud Firewalls & SSL Encryption
           </p>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };

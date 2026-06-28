@@ -1,6 +1,6 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AppContext } from '../context/AppContext';
-import { ArrowLeft, CreditCard, Lock, Smartphone, ShieldCheck, MapPin, X, CheckCircle, Clock, MessageSquare, Tag } from 'lucide-react';
+import { ArrowLeft, CreditCard, Lock, Smartphone, ShieldCheck, MapPin, X, CheckCircle, Clock, MessageSquare, Tag, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { playTick, playSuccessChime } from '../utils/sound';
 import { safeStorage as localStorage } from '../utils/storage';
@@ -16,13 +16,20 @@ export default function CheckoutModal() {
     cart,
     savedAddresses,
     addAddress,
-    setShowSupport
+    setShowSupport,
+    updateCartQuantity
   } = useContext(AppContext);
 
   const [phoneNumber, setPhoneNumber] = useState(localStorage.getItem('foodmaxx_user_phone') || (savedAddresses?.length > 0 ? savedAddresses[savedAddresses.length - 1].phone || '' : ''));
   const [streetAddress, setStreetAddress] = useState(savedAddresses?.length > 0 ? savedAddresses[savedAddresses.length - 1].details || '' : '');
   const [notes, setNotes] = useState('');
   const [allergies, setAllergies] = useState('');
+
+  useEffect(() => {
+    if (cart.length === 0 && phase === 'details') {
+      setActiveScreen('home');
+    }
+  }, [cart, phase]);
   
   const [scheduleType, setScheduleType] = useState('lunch'); // 'lunch', 'dinner', 'custom'
   const [customDate, setCustomDate] = useState('');
@@ -186,7 +193,7 @@ export default function CheckoutModal() {
       // Try v2 modern transaction flow
       const paystack = new window.PaystackPop();
       paystack.newTransaction({
-        key: 'pk_test_114553ffb90cdb1598f3e238b6d19b1d6e176a27',
+        key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_test_114553ffb90cdb1598f3e238b6d19b1d6e176a27',
         email: 'customer@foodmaxx-ibadan.com',
         amount: Math.round(total * 100),
         currency: 'NGN',
@@ -220,7 +227,7 @@ export default function CheckoutModal() {
       try {
         // Fallback to v1 setup syntax
         const handler = window.PaystackPop.setup({
-          key: 'pk_test_114553ffb90cdb1598f3e238b6d19b1d6e176a27',
+          key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_test_114553ffb90cdb1598f3e238b6d19b1d6e176a27',
           email: 'customer@foodmaxx-ibadan.com',
           amount: Math.round(total * 100),
           currency: 'NGN',
@@ -518,10 +525,22 @@ export default function CheckoutModal() {
 
             <div className="input-group">
               <label className="input-label">Delivery Schedule</label>
-              <div className="checkout-preorder-alert">
-                <Clock size={16} className="alert-icon" />
+              <div className="checkout-preorder-alert" style={{
+                background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.08))',
+                border: '1.5px dashed #F59E0B',
+                borderRadius: '16px',
+                padding: '12px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                color: 'var(--text-main)',
+                fontSize: '0.78rem',
+                lineHeight: '1.4',
+                marginBottom: '14px'
+              }}>
+                <AlertTriangle size={18} style={{ color: '#F59E0B', flexShrink: 0, animation: 'pulse 2s infinite' }} />
                 <span className="alert-text">
-                  <strong>Pre-Order Only:</strong> Lunch order closes at 10 AM. Dinner delivery starts at 3 PM.
+                  <strong style={{ color: '#D97706', fontWeight: 800 }}>Pre-Order Schedule:</strong> Lunch order window closes at 10:00 AM. Dinner delivery starts at 3:00 PM.
                 </span>
               </div>
               <div className="schedule-options" style={{ gridTemplateColumns: '1fr 1fr' }}>
@@ -747,11 +766,48 @@ export default function CheckoutModal() {
 
             <div className="checkout-pricing-card" style={{ margin: '20px 8px' }}>
               {cart.slice(0, 3).map((item) => (
-                <div key={item.uniqueId} className="price-line" style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '6px' }}>
-                  <span style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {item.quantity}× {item.name}
-                  </span>
-                  <span>₦{(item.price * item.quantity).toLocaleString()}</span>
+                <div key={item.uniqueId} className="price-line" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '10px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', maxWidth: '200px' }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 'bold', color: 'var(--text-main)' }}>
+                      {item.name}
+                    </span>
+                    {item.customizations && item.customizations.length > 0 && (
+                      <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)' }}>
+                        {item.customizations.map(c => c.name).join(', ')}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '2px 4px' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          updateCartQuantity(item.uniqueId, item.quantity - 1);
+                          playTick(soundEnabled);
+                        }}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-main)', width: '22px', height: '22px', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontWeight: 'bold' }}
+                      >
+                        -
+                      </button>
+                      <span style={{ fontSize: '0.74rem', fontWeight: 'bold', color: 'var(--text-main)', width: '16px', textAlign: 'center' }}>
+                        {item.quantity}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          updateCartQuantity(item.uniqueId, item.quantity + 1);
+                          playTick(soundEnabled);
+                        }}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-main)', width: '22px', height: '22px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontWeight: 'bold' }}
+                      >
+                        +
+                      </button>
+                    </div>
+                    <span style={{ minWidth: '70px', textAlign: 'right', fontWeight: '800', color: 'var(--text-main)' }}>
+                      ₦{(item.price * item.quantity).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
               ))}
               {cart.length > 3 && (

@@ -16,11 +16,24 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('firebase/app') || id.includes('firebase/auth')) return 'firebase-core';
-          if (id.includes('firebase/firestore') || id.includes('firebase/storage')) return 'firebase-db';
-          if (id.includes('node_modules/framer-motion')) return 'framer';
-          if (id.includes('node_modules/lucide-react')) return 'lucide';
-          if (id.includes('node_modules/react-router')) return 'router';
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+              return 'vendor-react';
+            }
+            if (id.includes('firebase/app') || id.includes('firebase/auth')) {
+              return 'vendor-firebase-auth';
+            }
+            if (id.includes('firebase/firestore') || id.includes('firebase/storage')) {
+              return 'vendor-firebase-db';
+            }
+            if (id.includes('framer-motion')) {
+              return 'vendor-framer';
+            }
+            if (id.includes('lucide-react')) {
+              return 'vendor-icons';
+            }
+            return 'vendor-others';
+          }
         }
       }
     }
