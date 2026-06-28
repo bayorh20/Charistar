@@ -355,6 +355,7 @@ function AppContent() {
 
   // Onboarding & Network states
   const [onboardingStep, setOnboardingStep] = useState(1);
+  const [onboardingSlide, setOnboardingSlide] = useState(1);
   const [signupName, setSignupName] = useState('');
   const [signupPhone, setSignupPhone] = useState('');
   const [signupGender, setSignupGender] = useState('male');
@@ -793,119 +794,265 @@ function AppContent() {
                 <div className="onboarding-glass-card" style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%', padding: '32px 20px', position: 'relative', zIndex: 10, margin: 'auto 0' }}>
                   {onboardingStep === 1 ? (
                     <>
-                      <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <img loading="lazy" decoding="async" 
-                          src="/icon-192.png" 
-                          alt="FoodMaxx Logo" 
-                          style={{ width: '64px', height: '64px', borderRadius: '16px', marginBottom: '12px', boxShadow: '0 4px 12px rgba(255, 91, 38, 0.2)' }} 
-                        />
-                        <h2 style={{ fontFamily: 'var(--font-accent)', fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-main)', margin: '0 0 6px 0' }}>
-                          Welcome to FoodMaxx
-                        </h2>
-                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, margin: 0, lineHeight: 1.4 }}>
-                          Sign up now and get <span style={{ color: 'var(--primary)', fontWeight: 800 }}>₦1,000 off</span> your first Order!
-                        </p>
-                      </div>
-                      
-                      {/* Signup Form */}
-                      <div className="onboarding-form-block">
-                        <div>
-                          <label className="onboarding-label">
-                            Your Name
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="Input your name"
-                            value={signupName}
-                            onChange={(e) => setSignupName(e.target.value)}
-                            className="onboarding-input"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="onboarding-label">
-                            Phone Number
-                          </label>
-                          <input
-                            type="tel"
-                            placeholder="Input your Phone Number"
-                            value={signupPhone}
-                            onChange={(e) => setSignupPhone(e.target.value)}
-                            className="onboarding-input"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="onboarding-label">
-                            Gender
-                          </label>
-                          <div className="onboarding-gender-row" style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                            <button
-                              type="button"
-                              className={`onboarding-gender-btn ${signupGender === 'male' ? 'active' : ''}`}
-                              onClick={() => setSignupGender('male')}
-                              style={{
-                                flex: 1,
-                                background: signupGender === 'male' ? 'var(--primary)' : 'var(--bg-input)',
-                                color: signupGender === 'male' ? '#FFFFFF' : 'var(--text-main)',
-                                border: 'none',
-                                borderRadius: '10px',
-                                padding: '10px',
-                                fontSize: '0.8rem',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                              }}
-                            >
-                              👦 Male
-                            </button>
-                            <button
-                              type="button"
-                              className={`onboarding-gender-btn ${signupGender === 'female' ? 'active' : ''}`}
-                              onClick={() => setSignupGender('female')}
-                              style={{
-                                flex: 1,
-                                background: signupGender === 'female' ? 'var(--primary)' : 'var(--bg-input)',
-                                color: signupGender === 'female' ? '#FFFFFF' : 'var(--text-main)',
-                                border: 'none',
-                                borderRadius: '10px',
-                                padding: '10px',
-                                fontSize: '0.8rem',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                              }}
-                            >
-                              👩 Female
-                            </button>
+                      {/* Walkthrough Slide 1 */}
+                      {onboardingSlide === 1 && (
+                        <motion.div
+                          key="slide-1"
+                          initial={{ opacity: 0, x: 50 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -50 }}
+                          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                          style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+                        >
+                          <div className="onboarding-graphic">
+                            <svg viewBox="0 0 100 100" className="graphic-float" style={{ width: '90px', height: '90px' }}>
+                              <defs>
+                                <linearGradient id="dishGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                  <stop offset="0%" stopColor="var(--primary)" />
+                                  <stop offset="100%" stopColor="#FF8A65" />
+                                </linearGradient>
+                                <linearGradient id="steamGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+                                  <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.1" />
+                                  <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.8" />
+                                </linearGradient>
+                              </defs>
+                              <path d="M20,65 C20,35 80,35 80,65 Z" fill="url(#dishGrad)" filter="drop-shadow(0 8px 16px rgba(255,91,38,0.3))" />
+                              <path d="M15,65 L85,65 A4,4 0 0,1 89,69 L11,69 A4,4 0 0,1 15,65 Z" fill="#E0DCD5" />
+                              <circle cx="50" cy="33" r="5" fill="#FFB74D" />
+                              <path d="M42,25 Q38,15 42,5 Q46,15 42,25" fill="none" stroke="url(#steamGrad)" strokeWidth="3" strokeLinecap="round" />
+                              <path d="M50,22 Q46,12 50,2 Q54,12 50,22" fill="none" stroke="url(#steamGrad)" strokeWidth="3" strokeLinecap="round" />
+                              <path d="M58,25 Q54,15 58,5 Q62,15 58,25" fill="none" stroke="url(#steamGrad)" strokeWidth="3" strokeLinecap="round" />
+                              <line x1="5" y1="45" x2="15" y2="45" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" opacity="0.6" />
+                              <line x1="-2" y1="55" x2="12" y2="55" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" opacity="0.4" />
+                              <line x1="8" y1="35" x2="16" y2="35" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" opacity="0.3" />
+                            </svg>
+                            <div className="graphic-glow"></div>
                           </div>
-                        </div>
-                      </div>
+                          
+                          <h2 style={{ fontFamily: 'var(--font-accent)', fontSize: '1.65rem', fontWeight: 900, color: 'var(--text-main)', margin: '0 0 10px 0', lineHeight: 1.25 }}>
+                            {new Date().getHours() >= 6 && new Date().getHours() < 12 ? 'Good Morning ☀️' : new Date().getHours() >= 12 && new Date().getHours() < 17 ? 'Good Afternoon 🍔' : 'Good Evening 🍕'}
+                          </h2>
+                          <h3 style={{ fontFamily: 'var(--font-accent)', fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)', margin: '0 0 10px 0' }}>
+                            Gourmet Meals Delivered Fast
+                          </h3>
+                          <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', fontWeight: 600, margin: 0, lineHeight: 1.45, padding: '0 8px' }}>
+                            Order from the finest local kitchens in Ibadan and get it delivered hot, fresh, and on time.
+                          </p>
+                        </motion.div>
+                      )}
+
+                      {/* Walkthrough Slide 2 */}
+                      {onboardingSlide === 2 && (
+                        <motion.div
+                          key="slide-2"
+                          initial={{ opacity: 0, x: 50 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -50 }}
+                          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                          style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+                        >
+                          <div className="onboarding-graphic">
+                            <svg viewBox="0 0 100 100" className="graphic-float" style={{ width: '90px', height: '90px' }}>
+                              <defs>
+                                <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                  <stop offset="0%" stopColor="#FFD54F" />
+                                  <stop offset="50%" stopColor="#FFB300" />
+                                  <stop offset="100%" stopColor="#FF8F00" />
+                                </linearGradient>
+                                <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                  <stop offset="0%" stopColor="#B388FF" />
+                                  <stop offset="100%" stopColor="#6200EA" />
+                                </linearGradient>
+                              </defs>
+                              <rect x="15" y="25" width="70" height="46" rx="10" fill="url(#purpleGrad)" transform="rotate(-6 50 48)" filter="drop-shadow(0 10px 20px rgba(98,0,234,0.25))" />
+                              <circle cx="32" cy="42" r="8" fill="#FFF" opacity="0.15" />
+                              <rect x="25" y="56" width="30" height="6" rx="3" fill="#FFF" opacity="0.3" />
+                              <g transform="translate(68, 20)">
+                                <circle cx="0" cy="0" r="14" fill="url(#goldGrad)" filter="drop-shadow(0 4px 8px rgba(255,179,0,0.4))" />
+                                <text x="0" y="5" fontFamily="var(--font-accent)" fontSize="14" fontWeight="900" fill="#FFF" textAnchor="middle">₦</text>
+                              </g>
+                              <g transform="translate(18, 62) scale(0.75)">
+                                <circle cx="0" cy="0" r="14" fill="url(#goldGrad)" filter="drop-shadow(0 4px 8px rgba(255,179,0,0.4))" />
+                                <text x="0" y="5" fontFamily="var(--font-accent)" fontSize="14" fontWeight="900" fill="#FFF" textAnchor="middle">₦</text>
+                              </g>
+                              <g transform="translate(76, 68) scale(0.6)">
+                                <circle cx="0" cy="0" r="14" fill="url(#goldGrad)" filter="drop-shadow(0 4px 8px rgba(255,179,0,0.4))" />
+                                <text x="0" y="5" fontFamily="var(--font-accent)" fontSize="14" fontWeight="900" fill="#FFF" textAnchor="middle">₦</text>
+                              </g>
+                            </svg>
+                            <div className="graphic-glow" style={{ background: 'radial-gradient(ellipse at center, rgba(139, 92, 246, 0.4) 0%, rgba(139, 92, 246, 0) 70%)' }}></div>
+                          </div>
+                          
+                          <h2 style={{ fontFamily: 'var(--font-accent)', fontSize: '1.65rem', fontWeight: 900, color: 'var(--text-main)', margin: '0 0 10px 0', lineHeight: 1.25 }}>
+                            Delicious Rewards 🎁
+                          </h2>
+                          <h3 style={{ fontFamily: 'var(--font-accent)', fontSize: '1.25rem', fontWeight: 800, color: 'var(--primary)', margin: '0 0 10px 0' }}>
+                            Cashback & Referral Bonuses
+                          </h3>
+                          <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', fontWeight: 600, margin: 0, lineHeight: 1.45, padding: '0 8px' }}>
+                            Get reward points on every single order and build your affiliate wallet balance by inviting your friends.
+                          </p>
+                        </motion.div>
+                      )}
+
+                      {/* Walkthrough Slide 3 (Signup Form) */}
+                      {onboardingSlide === 3 && (
+                        <motion.div
+                          key="slide-3"
+                          initial={{ opacity: 0, x: 50 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -50 }}
+                          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                          style={{ display: 'flex', flexDirection: 'column', gap: '20px', width: '100%' }}
+                        >
+                          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <img loading="lazy" decoding="async" 
+                              src="/icon-192.png" 
+                              alt="FoodMaxx Logo" 
+                              style={{ width: '56px', height: '56px', borderRadius: '14px', marginBottom: '10px', boxShadow: '0 4px 12px rgba(255, 91, 38, 0.2)' }} 
+                            />
+                            <h2 style={{ fontFamily: 'var(--font-accent)', fontSize: '1.6rem', fontWeight: 900, color: 'var(--text-main)', margin: '0 0 4px 0' }}>
+                              Get Started with FoodMaxx
+                            </h2>
+                            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, margin: 0, lineHeight: 1.4 }}>
+                              Sign up now and get <span style={{ color: 'var(--primary)', fontWeight: 800 }}>₦1,000 off</span> your first order!
+                            </p>
+                          </div>
+                          
+                          {/* Signup Form Fields */}
+                          <div className="onboarding-form-block">
+                            <div>
+                              <label className="onboarding-label">
+                                Your Name
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="Input your name"
+                                value={signupName}
+                                onChange={(e) => setSignupName(e.target.value)}
+                                className="onboarding-input"
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="onboarding-label">
+                                Phone Number
+                              </label>
+                              <input
+                                type="tel"
+                                placeholder="Input your phone number"
+                                value={signupPhone}
+                                onChange={(e) => setSignupPhone(e.target.value)}
+                                className="onboarding-input"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="onboarding-label">
+                                Gender
+                              </label>
+                              <div className="onboarding-gender-row" style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                                <button
+                                  type="button"
+                                  className={`onboarding-gender-btn ${signupGender === 'male' ? 'active' : ''}`}
+                                  onClick={() => setSignupGender('male')}
+                                  style={{
+                                    flex: 1,
+                                    background: signupGender === 'male' ? 'var(--primary)' : 'var(--bg-input)',
+                                    color: signupGender === 'male' ? '#FFFFFF' : 'var(--text-main)',
+                                    border: 'none',
+                                    borderRadius: '10px',
+                                    padding: '10px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                  }}
+                                >
+                                  👦 Male
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`onboarding-gender-btn ${signupGender === 'female' ? 'active' : ''}`}
+                                  onClick={() => setSignupGender('female')}
+                                  style={{
+                                    flex: 1,
+                                    background: signupGender === 'female' ? 'var(--primary)' : 'var(--bg-input)',
+                                    color: signupGender === 'female' ? '#FFFFFF' : 'var(--text-main)',
+                                    border: 'none',
+                                    borderRadius: '10px',
+                                    padding: '10px',
+                                    fontSize: '0.8rem',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                  }}
+                                >
+                                  👩 Female
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
                       
                       {/* Invisible reCAPTCHA Anchor */}
                       <div id="recaptcha-container"></div>
                       
-                      {signupError && (
+                      {signupError && onboardingSlide === 3 && (
                         <p style={{ margin: 0, fontSize: '0.75rem', color: '#EF4444', fontWeight: 700, textAlign: 'center' }}>
                           ⚠️ {signupError}
                         </p>
                       )}
                       
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {/* Carousel Indicator Dots */}
+                      <div className="carousel-dots">
+                        <span onClick={() => { setOnboardingSlide(1); playTick(soundEnabled); }} className={`carousel-dot ${onboardingSlide === 1 ? 'active' : ''}`}></span>
+                        <span onClick={() => { setOnboardingSlide(2); playTick(soundEnabled); }} className={`carousel-dot ${onboardingSlide === 2 ? 'active' : ''}`}></span>
+                        <span onClick={() => { setOnboardingSlide(3); playTick(soundEnabled); }} className={`carousel-dot ${onboardingSlide === 3 ? 'active' : ''}`}></span>
+                      </div>
+
+                      {/* Navigation Action Buttons */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%' }}>
                         <button
-                          onClick={handleRegisterSubmit}
+                          onClick={() => {
+                            if (onboardingSlide < 3) {
+                              setOnboardingSlide(onboardingSlide + 1);
+                              playTick(soundEnabled);
+                            } else {
+                              handleRegisterSubmit();
+                            }
+                          }}
                           className="onboarding-btn-primary"
                           disabled={isSendingSms}
                         >
-                          {isSendingSms ? 'Sending SMS...' : 'Sign Up & Get Bonus'}
+                          {isSendingSms ? 'Sending SMS...' : onboardingSlide === 3 ? 'Sign Up & Get Bonus' : 'Next'}
                         </button>
                         
-                        <button
-                          onClick={handleGuestExplore}
-                          className="onboarding-btn-secondary"
-                        >
-                          Explore as Guest
-                        </button>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '2px', width: '100%', minHeight: '32px' }}>
+                          {onboardingSlide > 1 ? (
+                            <button
+                              onClick={() => {
+                                setOnboardingSlide(onboardingSlide - 1);
+                                playTick(soundEnabled);
+                              }}
+                              className="onboarding-btn-secondary"
+                              style={{ padding: '6px 12px', fontSize: '0.8rem', fontWeight: 700 }}
+                            >
+                              ← Back
+                            </button>
+                          ) : (
+                            <div />
+                          )}
+                          
+                          <button
+                            onClick={handleGuestExplore}
+                            className="onboarding-btn-secondary"
+                            style={{ padding: '6px 12px', fontSize: '0.8rem', fontWeight: 700, textDecoration: 'underline' }}
+                          >
+                            Explore as Guest
+                          </button>
+                        </div>
                       </div>
                     </>
                   ) : onboardingStep === 'otp' ? (
