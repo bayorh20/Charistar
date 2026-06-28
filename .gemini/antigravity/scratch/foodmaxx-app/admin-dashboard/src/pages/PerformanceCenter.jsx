@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Activity, ShieldAlert, ShieldCheck, DollarSign, Clock, RefreshCw, Zap, 
   Trash2, Sliders, Database, HardDrive, Cpu, AlertCircle, Sparkles, Download, 
-  Eye, CheckCircle2, Play, Calendar, AlertTriangle, ToggleLeft
+  Eye, CheckCircle2, Play, Calendar, AlertTriangle, ToggleLeft, Image as ImageIcon
 } from 'lucide-react';
 
 const PerformanceCenter = () => {
@@ -500,7 +500,7 @@ const PerformanceCenter = () => {
           {/* Image Compression compacting tool */}
           <div className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-3xl p-6 shadow-sm space-y-4">
             <h3 className="font-extrabold text-sm text-slate-800 dark:text-white flex items-center gap-2">
-              <Image size={18} className="text-orange-500" />
+              <ImageIcon size={18} className="text-orange-500" />
               <span>Media Optimizer Compactor</span>
             </h3>
 

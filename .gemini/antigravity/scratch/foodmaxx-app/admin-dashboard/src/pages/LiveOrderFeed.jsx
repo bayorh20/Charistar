@@ -32,7 +32,7 @@ const PrepTimer = ({ createdAt, status }) => {
   const timeLeft = targetPrep - elapsedMin;
   const isDelayed = timeLeft < 0;
 
-  if (status === 'Ready for Pickup' || status === 'Out for Delivery') {
+  if (status === 'Ready' || status === 'Out for Delivery') {
     return (
       <span className="text-[9px] font-black bg-blue-500/10 text-blue-600 px-2 py-0.5 rounded-md uppercase">
         Ready to Dispatch
@@ -296,15 +296,15 @@ const LiveOrderFeed = () => {
                       <div className="flex gap-2">
                         {order.status === 'Order Received' && (
                           <button
-                            onClick={() => handleUpdateStatus(order.id, 'Preparing Food', 1)}
+                            onClick={() => handleUpdateStatus(order.id, 'Preparing', 1)}
                             className="bg-orange-500 hover:bg-orange-600 text-white font-black text-[10px] uppercase px-3 py-1.5 rounded-xl shadow-xs transition-colors"
                           >
                             Accept & Prep
                           </button>
                         )}
-                        {order.status === 'Preparing Food' && (
+                        {order.status === 'Preparing' && (
                           <button
-                            onClick={() => handleUpdateStatus(order.id, 'Ready for Pickup', 2)}
+                            onClick={() => handleUpdateStatus(order.id, 'Ready', 2)}
                             className="bg-green-600 hover:bg-green-700 text-white font-black text-[10px] uppercase px-3 py-1.5 rounded-xl shadow-xs transition-colors"
                           >
                             Mark Ready
