@@ -27,6 +27,26 @@ const AuditLogs        = lazy(() => import('./pages/AuditLogs'));
 const PageBuilder      = lazy(() => import('./pages/PageBuilder'));
 const PerformanceCenter = lazy(() => import('./pages/PerformanceCenter'));
 
+if (typeof window !== 'undefined') {
+  window.__prefetchLogin            = () => import('./pages/Login');
+  window.__prefetchDashboard        = () => import('./pages/Dashboard');
+  window.__prefetchMobileHome       = () => import('./pages/MobileHome');
+  window.__prefetchLiveOrderFeed    = () => import('./pages/LiveOrderFeed');
+  window.__prefetchOrders           = () => import('./pages/Orders');
+  window.__prefetchMenuManagement   = () => import('./pages/MenuManagement');
+  window.__prefetchReviewManagement = () => import('./pages/ReviewManagement');
+  window.__prefetchCouponBuilder    = () => import('./pages/CouponBuilder');
+  window.__prefetchUsersManagement  = () => import('./pages/UsersManagement');
+  window.__prefetchRiderManagement  = () => import('./pages/RiderManagement');
+  window.__prefetchAffiliatePayouts = () => import('./pages/AffiliatePayouts');
+  window.__prefetchSupportChat      = () => import('./pages/SupportChat');
+  window.__prefetchMarketingManager = () => import('./pages/MarketingManager');
+  window.__prefetchGlobalSettings   = () => import('./pages/GlobalSettings');
+  window.__prefetchAuditLogs        = () => import('./pages/AuditLogs');
+  window.__prefetchPageBuilder      = () => import('./pages/PageBuilder');
+  window.__prefetchPerformanceCenter = () => import('./pages/PerformanceCenter');
+}
+
 // ── Loading spinners ──────────────────────────────────────────────────────────
 const PageSpinner = () => (
   <div className="flex-1 flex items-center justify-center min-h-[300px]">
