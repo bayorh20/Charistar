@@ -19,7 +19,8 @@ const PerformanceCenter = () => {
     auditLogs = [],
     reviews = [],
     menuItems = [],
-    categories = []
+    categories = [],
+    coupons = []
   } = useApp();
 
   // Uptime state calculated relative to page load time for complete realism

@@ -209,6 +209,17 @@ export default function MenuSection() {
     });
   }, [selectedCategory, menuItems]);
 
+  const [visibleCount, setVisibleCount] = useState(12);
+
+  // Reset visibleCount whenever the category changes
+  useEffect(() => {
+    setVisibleCount(12);
+  }, [selectedCategory]);
+
+  const visibleItems = useMemo(() => {
+    return filteredItems.slice(0, visibleCount);
+  }, [filteredItems, visibleCount]);
+
   const sortedSections = useMemo(() => {
     if (!pageLayout?.sections) {
       return [
@@ -439,18 +450,51 @@ export default function MenuSection() {
                 ))}
               </div>
             ) : filteredItems.length > 0 ? (
-              <div className="food-grid anim-fade-in hardware-accelerate">
-                {filteredItems.map((item) => (
-                  <FoodCard
-                    key={item.id}
-                    item={item}
-                    isFav={favorites.includes(item.id)}
-                    toggleFavorite={handleToggleFavoriteStable}
-                    onClickCard={handleClickCardStable}
-                    onAdd={handleAddClickStable}
-                    viewMode={viewMode}
-                  />
-                ))}
+              <div className="space-y-4">
+                <div className="food-grid anim-fade-in hardware-accelerate">
+                  {visibleItems.map((item) => (
+                    <FoodCard
+                      key={item.id}
+                      item={item}
+                      isFav={favorites.includes(item.id)}
+                      toggleFavorite={handleToggleFavoriteStable}
+                      onClickCard={handleClickCardStable}
+                      onAdd={handleAddClickStable}
+                      viewMode={viewMode}
+                    />
+                  ))}
+                </div>
+                {filteredItems.length > visibleCount && (
+                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px', marginBottom: '10px' }}>
+                    <button
+                      onClick={() => setVisibleCount(prev => prev + 12)}
+                      style={{
+                        padding: '12px 24px',
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--border-color)',
+                        color: 'var(--text-main)',
+                        borderRadius: '20px',
+                        fontSize: '0.74rem',
+                        fontWeight: 900,
+                        textTransform: 'uppercase',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                        transition: 'all 0.2s ease',
+                        letterSpacing: '0.05em'
+                      }}
+                      onMouseEnter={e => {
+                        e.target.style.background = 'var(--border-color)';
+                        e.target.style.transform = 'scale(1.02)';
+                      }}
+                      onMouseLeave={e => {
+                        e.target.style.background = 'var(--bg-card)';
+                        e.target.style.transform = 'none';
+                      }}
+                    >
+                      Show More Dishes (+{Math.min(12, filteredItems.length - visibleCount)})
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <div 

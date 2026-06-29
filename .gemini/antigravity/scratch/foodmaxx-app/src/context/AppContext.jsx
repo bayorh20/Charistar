@@ -164,9 +164,30 @@ export const AppProvider = ({ children }) => {
     return saved || 'home';
   });
   
-  const [storeConfig, setStoreConfig] = useState(null);
-  const [marketingConfig, setMarketingConfig] = useState(null);
-  const [pageLayout, setPageLayout] = useState(null);
+  const [storeConfig, setStoreConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem('fm_store_config');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [marketingConfig, setMarketingConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem('fm_marketing_config');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [pageLayout, setPageLayout] = useState(() => {
+    try {
+      const saved = localStorage.getItem('fm_page_layout');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [customizingItem, setCustomizingItem] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
@@ -272,129 +293,132 @@ export const AppProvider = ({ children }) => {
   });
 
 
+  // ── Unified Auth State Listener & Caching ──────────────────────────────
+  const [user, setUser] = useState(null);
+  const [authInitialized, setAuthInitialized] = useState(false);
+
+  useEffect(() => {
+    if (!auth) {
+      setAuthInitialized(true);
+      return;
+    }
+    return onAuthStateChanged(auth, (usr) => {
+      setUser(usr);
+      setAuthInitialized(true);
+    });
+  }, []);
+
   // Real-time synchronization with Firestore user profile document
   useEffect(() => {
-    if (!auth || !db) return;
-    let unsubscribeDoc = null;
+    if (!authInitialized || !db) return;
+    if (!user) {
+      setUserProfile({
+        name: '',
+        phone: '',
+        photo: '/avatar_male.webp',
+        gender: 'male',
+        pushEnabled: true,
+        registered: false,
+        isGuest: false
+      });
+      setUserPoints(0);
+      return;
+    }
 
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      if (unsubscribeDoc) {
-        unsubscribeDoc();
-        unsubscribeDoc = null;
-      }
-      if (user) {
-        const userDocRef = doc(db, 'users', user.uid);
-        unsubscribeDoc = onSnapshot(userDocRef, (docSnap) => {
-          if (docSnap.exists()) {
-            const data = docSnap.data();
-            
-            // Sync user profile fields
-            setUserProfile({
-              name: data.name || '',
-              phone: data.phone || user.phoneNumber || '',
-              photo: data.photo || (data.gender === 'female' ? '/avatar_female.webp' : '/avatar_male.webp'),
-              gender: data.gender || 'male',
-              pushEnabled: data.pushEnabled !== false,
-              registered: true,
-              isGuest: false
-            });
-            
-            if (typeof data.points === 'number') {
-              setUserPoints(data.points);
-            }
-            if (Array.isArray(data.savedAddresses)) {
-              setSavedAddresses(data.savedAddresses);
-            }
-            if (Array.isArray(data.favorites)) {
-              setFavorites(data.favorites);
-            }
-            if (Array.isArray(data.unlockedPerks)) {
-              setUnlockedPerks(data.unlockedPerks);
-            }
-          } else {
-            // Auto-create missing user document if they are logged in via Auth
-            // (e.g. if the Firestore document was cleared during a database purge)
-            const name = user.displayName || 'Foodie';
-            const phone = user.phoneNumber || '';
-            setDoc(userDocRef, {
-              name,
-              phone,
-              gender: 'male',
-              photo: '/avatar_male.webp',
-              pushEnabled: true,
-              points: 200,
-              savedAddresses: [],
-              favorites: [],
-              unlockedPerks: [],
-              registered: true,
-              createdAt: new Date().toISOString()
-            }).catch(err => console.error("Error auto-creating missing user document:", err));
-          }
-        }, (err) => {
-          console.warn("Firestore user snapshot failed:", err);
+    const userDocRef = doc(db, 'users', user.uid);
+    const unsubscribeDoc = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        
+        setUserProfile({
+          name: data.name || '',
+          phone: data.phone || user.phoneNumber || '',
+          photo: data.photo || (data.gender === 'female' ? '/avatar_female.webp' : '/avatar_male.webp'),
+          gender: data.gender || 'male',
+          pushEnabled: data.pushEnabled !== false,
+          registered: true,
+          isGuest: false
         });
+        
+        if (typeof data.points === 'number') {
+          setUserPoints(data.points);
+        }
+        if (Array.isArray(data.savedAddresses)) {
+          setSavedAddresses(data.savedAddresses);
+        }
+        if (Array.isArray(data.favorites)) {
+          setFavorites(data.favorites);
+        }
+        if (Array.isArray(data.unlockedPerks)) {
+          setUnlockedPerks(data.unlockedPerks);
+        }
+      } else {
+        const name = user.displayName || 'Foodie';
+        const phone = user.phoneNumber || '';
+        setDoc(userDocRef, {
+          name,
+          phone,
+          gender: 'male',
+          photo: '/avatar_male.webp',
+          pushEnabled: true,
+          points: 200,
+          savedAddresses: [],
+          favorites: [],
+          unlockedPerks: [],
+          registered: true,
+          createdAt: new Date().toISOString()
+        }).catch(err => console.error("Error auto-creating missing user document:", err));
       }
+    }, (err) => {
+      console.warn("Firestore user snapshot failed:", err);
     });
 
     return () => {
-      if (unsubscribeDoc) unsubscribeDoc();
-      unsubscribeAuth();
+      unsubscribeDoc();
     };
-  }, []);
+  }, [user, authInitialized]);
 
   // Real-time synchronization of order history from Firestore
   useEffect(() => {
-    if (!auth || !db) return;
-    let unsubscribeOrders = null;
-
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-      if (unsubscribeOrders) {
-        unsubscribeOrders();
-        unsubscribeOrders = null;
-      }
-      
-      const targetUserId = user ? user.uid : guestUid;
-      const q = query(collection(db, 'orders'), where('userId', '==', targetUserId));
-      
-      unsubscribeOrders = onSnapshot(q, (snapshot) => {
-        const list = [];
-        snapshot.forEach(docSnap => {
-          list.push({ id: docSnap.id, ...docSnap.data() });
-        });
-        
-        list.sort((a, b) => {
-          const dateA = a.createdAt ? new Date(a.createdAt) : 0;
-          const dateB = b.createdAt ? new Date(b.createdAt) : 0;
-          return dateB - dateA;
-        });
-
-        setOrderHistory(list);
-        localStorage.setItem('fm_orders', JSON.stringify(list));
-
-        // Sync current active order if any (statusIndex < 4 && statusIndex >= 0)
-        const active = list.find(o => typeof o.statusIndex === 'number' && o.statusIndex < 4 && o.statusIndex >= 0);
-        if (active) {
-          setCurrentOrder(active);
-        } else {
-          // Keep completed/rated order if it was selected, so user can see rating card
-          setCurrentOrder(prev => {
-            if (prev) {
-              const match = list.find(o => o.id === prev.id);
-              if (match) return match;
-            }
-            return null;
-          });
-        }
-      }, (err) => {
-        console.warn("Firestore orders snapshot failed:", err);
+    if (!authInitialized || !db) return;
+    const targetUserId = user ? user.uid : guestUid;
+    const q = query(collection(db, 'orders'), where('userId', '==', targetUserId));
+    
+    const unsubscribeOrders = onSnapshot(q, (snapshot) => {
+      const list = [];
+      snapshot.forEach(docSnap => {
+        list.push({ id: docSnap.id, ...docSnap.data() });
       });
+      
+      list.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt) : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt) : 0;
+        return dateB - dateA;
+      });
+
+      setOrderHistory(list);
+      localStorage.setItem('fm_orders', JSON.stringify(list));
+
+      const active = list.find(o => typeof o.statusIndex === 'number' && o.statusIndex < 4 && o.statusIndex >= 0);
+      if (active) {
+        setCurrentOrder(active);
+      } else {
+        setCurrentOrder(prev => {
+          if (prev) {
+            const match = list.find(o => o.id === prev.id);
+            if (match) return match;
+          }
+          return null;
+        });
+      }
+    }, (err) => {
+      console.warn("Firestore orders snapshot failed:", err);
     });
 
     return () => {
-      if (unsubscribeOrders) unsubscribeOrders();
-      unsubscribeAuth();
+      unsubscribeOrders();
     };
-  }, [guestUid]);
+  }, [user, authInitialized, guestUid]);
 
   // Real-time synchronization of menu items, categories, and settings from Firestore
   useEffect(() => {
@@ -403,11 +427,9 @@ export const AppProvider = ({ children }) => {
       return;
     }
 
-    // Categories — live from Firestore only. Admin Dashboard manages these.
     const unsubscribeCats = onSnapshot(collection(db, 'categories'), (snapshot) => {
       const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       list.sort((a, b) => (a.order || 0) - (b.order || 0));
-      // Only display visible and active categories to customer app
       const customerCats = list.filter(c => c.visibility !== 'hidden' && c.status !== 'inactive');
       setCategories(customerCats);
       try {
@@ -417,10 +439,8 @@ export const AppProvider = ({ children }) => {
       console.warn('Firestore categories stream failed:', err);
     });
 
-    // Menu items — live from Firestore only. Admin Dashboard manages these.
     const unsubscribeItems = onSnapshot(collection(db, 'menu_items'), (snapshot) => {
       const list = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      // Only display active, non-draft products to customer app
       const customerItems = list.filter(item => item.isDraft !== true && item.status !== 'inactive');
       setMenuItems(customerItems);
       try {
@@ -436,8 +456,8 @@ export const AppProvider = ({ children }) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         setStoreConfig(data);
+        localStorage.setItem('fm_store_config', JSON.stringify(data));
         
-        // Remote Cache Purge Engine
         if (data.cacheVersion !== undefined) {
           const localVer = parseInt(localStorage.getItem('fm_cache_version') || '0', 10);
           const remoteVer = parseInt(data.cacheVersion || 0, 10);
@@ -445,7 +465,6 @@ export const AppProvider = ({ children }) => {
             localStorage.setItem('fm_cache_version', String(remoteVer));
             console.warn('Remote cache purge requested (v' + remoteVer + '). Clearing client caches...');
             
-            // Unregister Service Workers
             if ('serviceWorker' in navigator) {
               navigator.serviceWorker.getRegistrations().then((registrations) => {
                 for (let r of registrations) {
@@ -453,7 +472,6 @@ export const AppProvider = ({ children }) => {
                 }
               });
             }
-            // Clear Cache Storages
             if ('caches' in window) {
               caches.keys().then((keys) => {
                 for (let k of keys) {
@@ -462,7 +480,6 @@ export const AppProvider = ({ children }) => {
               });
             }
             
-            // Clear Storage while preserving user identifiers and configuration
             const preservedKeys = ['fm_user_profile', 'fm_guest_uid', 'fm_cache_version', 'sound_enabled', 'soundEnabled', 'dark_mode'];
             const preserved = {};
             preservedKeys.forEach(k => {
@@ -483,7 +500,6 @@ export const AppProvider = ({ children }) => {
           }
         }
         
-        // Dynamically apply colors to DOM
         const root = document.documentElement;
         if (data.themeColors) {
           if (data.themeColors.primary) {
@@ -505,7 +521,9 @@ export const AppProvider = ({ children }) => {
 
     const unsubscribeMarketing = onSnapshot(doc(db, 'settings', 'marketing_config'), (docSnap) => {
       if (docSnap.exists()) {
-        setMarketingConfig(docSnap.data());
+        const data = docSnap.data();
+        setMarketingConfig(data);
+        localStorage.setItem('fm_marketing_config', JSON.stringify(data));
       }
     }, (err) => {
       console.warn("Firestore marketing settings stream failed:", err);
@@ -513,7 +531,9 @@ export const AppProvider = ({ children }) => {
 
     const unsubscribeLayout = onSnapshot(doc(db, 'settings', 'page_layout'), (docSnap) => {
       if (docSnap.exists()) {
-        setPageLayout(docSnap.data());
+        const data = docSnap.data();
+        setPageLayout(data);
+        localStorage.setItem('fm_page_layout', JSON.stringify(data));
       }
     }, (err) => {
       console.warn("Firestore page layout stream failed:", err);

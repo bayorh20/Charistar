@@ -76,9 +76,10 @@ export default function SupportChat() {
       }
     };
 
+    let handleGeometryChange = null;
     if (navigator.virtualKeyboard) {
       navigator.virtualKeyboard.overlaysContent = true;
-      const handleGeometryChange = (e) => {
+      handleGeometryChange = (e) => {
         const { height } = e.target.boundingRect;
         setKeyboardHeight(height);
       };
@@ -95,7 +96,7 @@ export default function SupportChat() {
     handleResize();
 
     return () => {
-      if (navigator.virtualKeyboard) {
+      if (navigator.virtualKeyboard && handleGeometryChange) {
         navigator.virtualKeyboard.removeEventListener('geometrychange', handleGeometryChange);
       }
       if (window.visualViewport) {
