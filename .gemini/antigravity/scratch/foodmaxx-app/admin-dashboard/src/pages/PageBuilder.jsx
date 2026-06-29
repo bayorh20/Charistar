@@ -735,6 +735,98 @@ const PageBuilder = () => {
 
   const sortedSections = [...sections].sort((a, b) => a.order - b.order);
 
+  const rightColumnBlocks = [
+    {
+      id: 'preview',
+      order: showAnimationsPreview ? 3 : 1,
+      element: (
+        <motion.div
+          layout
+          key="preview"
+          transition={{ type: 'spring', damping: 25, stiffness: 120 }}
+          className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm p-6"
+        >
+          <div className="flex items-center gap-2 mb-5">
+            <Smartphone size={16} className="text-orange-500" />
+            <h3 className="font-extrabold text-sm text-slate-800 dark:text-white">Live Preview</h3>
+          </div>
+          <div className="flex justify-center">
+            <PhoneMockup
+              sections={sections}
+              announcement={sections.find(s => s.id === 'announcement')}
+              animations={animations}
+              activePreviewScreen={activePreviewScreen}
+              categories={categories}
+            />
+          </div>
+          <p className="text-center text-[10px] text-slate-400 font-bold mt-4">Preview updates as you reorder sections</p>
+        </motion.div>
+      )
+    },
+    {
+      id: 'visibility',
+      order: showAnimationsPreview ? 1 : 2,
+      element: (
+        <motion.div
+          layout
+          key="visibility"
+          transition={{ type: 'spring', damping: 25, stiffness: 120 }}
+          className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm p-5 space-y-3"
+        >
+          <h3 className="font-extrabold text-xs text-slate-800 dark:text-white uppercase tracking-wider">Section Visibility</h3>
+          {sortedSections.map(section => {
+            const Icon = SECTION_ICONS[section.id] || Layers;
+            const colorClass = SECTION_COLORS[section.id] || 'text-slate-500';
+            return (
+              <div key={section.id} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Icon size={13} className={colorClass} />
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-350">{section.label}</span>
+                </div>
+                <button
+                  onClick={() => toggleVisibility(section.id)}
+                  className={`w-9 h-5 rounded-full transition-all duration-200 relative flex items-center ${section.visible ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'}`}
+                >
+                  <span className={`absolute w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-all duration-200 ${section.visible ? 'left-4.5 left-[calc(100%-16px)]' : 'left-0.5'}`} />
+                </button>
+              </div>
+            );
+          })}
+        </motion.div>
+      )
+    },
+    {
+      id: 'stats',
+      order: showAnimationsPreview ? 2 : 3,
+      element: (
+        <motion.div
+          layout
+          key="stats"
+          transition={{ type: 'spring', damping: 25, stiffness: 120 }}
+          className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-3xl border border-slate-100 dark:border-slate-700 p-5 space-y-3"
+        >
+          <h3 className="font-extrabold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Layout Stats</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-100 dark:border-slate-700">
+              <div className="text-xl font-black text-green-600">{sortedSections.filter(s => s.visible).length}</div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase">Visible</div>
+            </div>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-100 dark:border-slate-700">
+              <div className="text-xl font-black text-slate-400">{sortedSections.filter(s => !s.visible).length}</div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase">Hidden</div>
+            </div>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 col-span-2">
+              <div className="text-lg font-black text-orange-500">{animations.mode} · {animations.duration}s</div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase">Active Animation Mode</div>
+            </div>
+          </div>
+        </motion.div>
+      )
+    }
+  ];
+
+  const sortedRightColumnBlocks = [...rightColumnBlocks].sort((a, b) => a.order - b.order);
+
   return (
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
 
@@ -1465,73 +1557,17 @@ const PageBuilder = () => {
 
       {/* ── Right: Live Preview ────────────────────────────────────────────────── */}
       <div className="relative">
-        <div className={`xl:sticky space-y-6 transition-all duration-700 ease-in-out ${
-          showAnimationsPreview 
-            ? 'xl:top-[160px] xl:translate-y-[80px] xl:scale-[0.98]' 
-            : 'xl:top-6 xl:translate-y-0 xl:scale-100'
-        }`}>
-
-        {/* Phone Preview */}
-        <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-5">
-            <Smartphone size={16} className="text-orange-500" />
-            <h3 className="font-extrabold text-sm text-slate-800 dark:text-white">Live Preview</h3>
-          </div>
-          <div className="flex justify-center">
-            <PhoneMockup
-              sections={sections}
-              announcement={sections.find(s => s.id === 'announcement')}
-              animations={animations}
-              activePreviewScreen={activePreviewScreen}
-              categories={categories}
-            />
-          </div>
-          <p className="text-center text-[10px] text-slate-400 font-bold mt-4">Preview updates as you reorder sections</p>
-        </div>
-
-        {/* Section visibility summary */}
-        <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-sm p-5 space-y-3">
-          <h3 className="font-extrabold text-xs text-slate-800 dark:text-white uppercase tracking-wider">Section Visibility</h3>
-          {sortedSections.map(section => {
-            const Icon = SECTION_ICONS[section.id] || Layers;
-            const colorClass = SECTION_COLORS[section.id] || 'text-slate-500';
-            return (
-              <div key={section.id} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Icon size={13} className={colorClass} />
-                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{section.label}</span>
-                </div>
-                <button
-                  onClick={() => toggleVisibility(section.id)}
-                  className={`w-9 h-5 rounded-full transition-all duration-200 relative flex items-center ${section.visible ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'}`}
-                >
-                  <span className={`absolute w-3.5 h-3.5 rounded-full bg-white shadow-sm transition-all duration-200 ${section.visible ? 'left-4.5 left-[calc(100%-16px)]' : 'left-0.5'}`} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Quick Stats */}
-        <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-3xl border border-slate-100 dark:border-slate-700 p-5 space-y-3">
-          <h3 className="font-extrabold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">Layout Stats</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-100 dark:border-slate-700">
-              <div className="text-xl font-black text-green-600">{sortedSections.filter(s => s.visible).length}</div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase">Visible</div>
-            </div>
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-100 dark:border-slate-700">
-              <div className="text-xl font-black text-slate-400">{sortedSections.filter(s => !s.visible).length}</div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase">Hidden</div>
-            </div>
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 col-span-2">
-              <div className="text-lg font-black text-orange-500">{animations.mode} · {animations.duration}s</div>
-              <div className="text-[10px] font-bold text-slate-400 uppercase">Active Animation Mode</div>
-            </div>
-          </div>
-        </div>
+        <motion.div 
+          layout
+          className={`xl:sticky space-y-6 transition-all duration-750 ease-in-out ${
+            showAnimationsPreview 
+              ? 'xl:top-[160px] xl:translate-y-[80px]' 
+              : 'xl:top-6 xl:translate-y-0'
+          }`}
+        >
+          {sortedRightColumnBlocks.map(block => block.element)}
+        </motion.div>
       </div>
-    </div>
 
       {/* ── Slide Form Modal ──────────────────────────────────────────────────── */}
       <AnimatePresence>
