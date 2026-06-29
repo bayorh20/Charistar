@@ -353,6 +353,7 @@ const PageBuilder = () => {
 
   // File Uploading state
   const [isUploading, setIsUploading] = useState(false);
+  const [dragOverMedia, setDragOverMedia] = useState(false);
 
   // Categories Builder States
   const [editingCatId, setEditingCatId] = useState(null);
@@ -361,6 +362,8 @@ const PageBuilder = () => {
   const [localCategories, setLocalCategories] = useState([]);
   const dragCatRef = useRef(null);
   const dragOverCatRef = useRef(null);
+  const dragSlideRef = useRef(null);
+  const dragOverSlideRef = useRef(null);
 
   const openAddCategory = () => {
     setCatForm({ id: '', label: '', icon: '🍔', image: '' });
@@ -383,14 +386,70 @@ const PageBuilder = () => {
     return ['mp4', 'webm', 'mov', 'avi', 'mkv', '3gp', 'flv'].includes(ext);
   };
 
+  const compressImage = (file) => {
+    return new Promise((resolve) => {
+      if (!file.type.startsWith('image/')) {
+        resolve(file);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          const maxDim = 1600;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              resolve(file);
+              return;
+            }
+            const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            resolve(compressedFile);
+          }, 'image/jpeg', 0.82);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   // File upload handler
   const handleFileUpload = async (e, onUploadSuccess) => {
-    const file = e.target.files[0];
-    if (!file) return;
+    const rawFile = e && e.target ? e.target.files[0] : e;
+    if (!rawFile) return;
 
-    const isVideo = isVideoFile(file);
+    // Check for duplicate uploads
+    const existingSlide = sections.find(s => s.id === 'hero')?.slides?.find(s => s.image?.includes(rawFile.name));
+    if (existingSlide) {
+      toast.warning('Duplicate Alert', 'This file has already been uploaded. Reusing existing URL.');
+      onUploadSuccess(existingSlide.image, existingSlide.mediaType || 'image');
+      return;
+    }
+
+    const isVideo = isVideoFile(rawFile);
     const maxSize = isVideo ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
-    if (file.size > maxSize) {
+    if (rawFile.size > maxSize) {
       toast.error('File Too Large', `Max size allowed is ${isVideo ? '50MB' : '5MB'}`);
       return;
     }
@@ -398,10 +457,11 @@ const PageBuilder = () => {
     setIsUploading(true);
     const toastId = toast.info('Uploading...', 'Uploading asset to Firebase Storage...');
     try {
+      const file = isVideo ? rawFile : await compressImage(rawFile);
       const fileRef = ref(storage, `page_builder/${Date.now()}_${file.name}`);
       const snapshot = await uploadBytes(fileRef, file);
       const downloadUrl = await getDownloadURL(snapshot.ref);
-      onUploadSuccess(downloadUrl);
+      onUploadSuccess(downloadUrl, isVideo ? 'video' : 'image');
       toast.dismiss(toastId);
       toast.success('Upload Success 🎉', 'File uploaded and synced.');
     } catch (err) {
@@ -580,6 +640,40 @@ const PageBuilder = () => {
     }
   };
 
+  // Drag-and-drop handlers for hero slides
+  const handleSlideDragStart = (idx) => {
+    dragSlideRef.current = idx;
+  };
+
+  const handleSlideDragEnter = (idx, sectionId) => {
+    dragOverSlideRef.current = idx;
+    setSections(prev => prev.map(s => {
+      if (s.id !== sectionId) return s;
+      const slides = [...(s.slides || [])];
+      const [dragged] = slides.splice(dragSlideRef.current, 1);
+      slides.splice(idx, 0, dragged);
+      dragSlideRef.current = idx;
+      return { ...s, slides };
+    }));
+  };
+
+  const handleSlideDragEnd = () => {
+    dragSlideRef.current = null;
+    dragOverSlideRef.current = null;
+    setIsDirty(true);
+  };
+
+  const handleMediaDrop = (e) => {
+    e.preventDefault();
+    setDragOverMedia(false);
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      handleFileUpload(file, (url, type) => {
+        setSlideForm(p => ({ ...p, image: url, mediaType: type }));
+      });
+    }
+  };
+
   const saveCategoryBuilder = async () => {
     if (!catForm.label || !catForm.id) {
       toast.warning('Fields Required', 'Slug and Label are required.');
@@ -674,23 +768,46 @@ const PageBuilder = () => {
 
   // ── Slide management (hero section) ───────────────────────────────────────
   const openAddSlide = (sectionId) => {
-    setSlideForm({ title: '', desc: '', image: '' });
+    setSlideForm({ 
+      title: '', 
+      desc: '', 
+      image: '', 
+      mediaType: 'image', 
+      ctaText: '', 
+      ctaLink: '', 
+      active: true, 
+      startDate: '', 
+      endDate: '' 
+    });
     setEditingSlideIdx(null);
     setIsSlideFormOpen(sectionId);
   };
 
   const openEditSlide = (sectionId, idx) => {
     const section = sections.find(s => s.id === sectionId);
-    setSlideForm({ ...(section.slides || [])[idx] });
+    const slide = (section.slides || [])[idx];
+    setSlideForm({ 
+      title: '', 
+      desc: '', 
+      image: '', 
+      mediaType: 'image', 
+      ctaText: '', 
+      ctaLink: '', 
+      active: true, 
+      startDate: '', 
+      endDate: '',
+      ...slide 
+    });
     setEditingSlideIdx(idx);
     setIsSlideFormOpen(sectionId);
   };
 
   const saveSlide = (sectionId) => {
     if (!slideForm.title || !slideForm.image) {
-      toast.warning('Missing Fields', 'Please enter a title and image URL for this slide.');
+      toast.warning('Missing Fields', 'Please enter a title and media URL for this slide.');
       return;
     }
+    setIsDirty(true);
     setSections(prev => prev.map(s => {
       if (s.id !== sectionId) return s;
       const slides = [...(s.slides || [])];
@@ -706,6 +823,7 @@ const PageBuilder = () => {
   };
 
   const deleteSlide = (sectionId, idx) => {
+    setIsDirty(true);
     setSections(prev => prev.map(s => {
       if (s.id !== sectionId) return s;
       const slides = (s.slides || []).filter((_, i) => i !== idx);
@@ -1074,23 +1192,61 @@ const PageBuilder = () => {
                                   </label>
                                 </div>
                               </div>
-                              {(section.slides || []).map((slide, i) => (
-                                <div key={slide.id || i} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
-                                  {slide.image && (
-                                    <img src={slide.image} alt={slide.title} className="w-12 h-10 object-cover rounded-lg shrink-0" />
-                                  )}
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-extrabold text-xs text-slate-800 dark:text-white truncate">{slide.title}</p>
-                                    {slide.desc && <p className="text-[10px] text-slate-400 truncate">{slide.desc}</p>}
+                              {(section.slides || []).map((slide, i) => {
+                                const isVideo = slide.mediaType === 'video' || (slide.image && slide.image.toLowerCase().split('?')[0].endsWith('.mp4'));
+                                return (
+                                  <div 
+                                    key={slide.id || i} 
+                                    draggable
+                                    onDragStart={() => handleSlideDragStart(i)}
+                                    onDragEnter={() => handleSlideDragEnter(i, section.id)}
+                                    onDragEnd={handleSlideDragEnd}
+                                    onDragOver={e => e.preventDefault()}
+                                    className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 cursor-move hover:border-orange-500/50 transition-all"
+                                  >
+                                    <div className="text-slate-400 dark:text-slate-600 cursor-grab active:cursor-grabbing">
+                                      <GripVertical size={14} />
+                                    </div>
+                                    {slide.image && (
+                                      isVideo ? (
+                                        <div className="w-12 h-10 bg-slate-800 rounded-lg shrink-0 flex items-center justify-center relative overflow-hidden">
+                                          <video src={slide.image} className="w-full h-full object-cover" muted playsInline />
+                                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                            <Play size={10} className="text-white fill-white" />
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <img src={slide.image} alt={slide.title} className="w-12 h-10 object-cover rounded-lg shrink-0" />
+                                      )
+                                    )}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <p className="font-extrabold text-xs text-slate-800 dark:text-white truncate">{slide.title}</p>
+                                        {slide.active === false ? (
+                                          <span className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-[8px] font-black text-slate-400 rounded">Inactive</span>
+                                        ) : (
+                                          <span className="px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-950 text-[8px] font-black text-emerald-600 rounded">Active</span>
+                                        )}
+                                        {isVideo && (
+                                          <span className="px-1.5 py-0.5 bg-blue-50 dark:bg-blue-950/40 text-[8px] font-black text-blue-500 rounded">Video</span>
+                                        )}
+                                      </div>
+                                      <div className="flex items-center gap-2 mt-0.5">
+                                        {slide.desc && <p className="text-[10px] text-slate-400 truncate max-w-[120px]">{slide.desc}</p>}
+                                        {(slide.startDate || slide.endDate) && (
+                                          <span className="text-[9px] text-orange-500 font-bold">Scheduled</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <button onClick={() => openEditSlide(section.id, i)} className="p-1.5 text-slate-400 hover:text-orange-500 transition-colors">
+                                      <Edit size={12} />
+                                    </button>
+                                    <button onClick={() => deleteSlide(section.id, i)} className="p-1.5 text-slate-400 hover:text-red-500 transition-colors">
+                                      <Trash2 size={12} />
+                                    </button>
                                   </div>
-                                  <button onClick={() => openEditSlide(section.id, i)} className="p-1.5 text-slate-400 hover:text-orange-500 transition-colors">
-                                    <Edit size={12} />
-                                  </button>
-                                  <button onClick={() => deleteSlide(section.id, i)} className="p-1.5 text-slate-400 hover:text-red-500 transition-colors">
-                                    <Trash2 size={12} />
-                                  </button>
-                                </div>
-                              ))}
+                                );
+                              })}
                               {(section.slides || []).length === 0 && (
                                 <div className="text-center py-4 border border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
                                   <p className="text-[10px] font-bold text-slate-400">No slides yet — click "Add Slide" above</p>
@@ -1582,7 +1738,7 @@ const PageBuilder = () => {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-2xl w-full max-w-md p-6 relative"
+              className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-2xl w-full max-w-lg p-6 relative max-h-[90vh] overflow-y-auto space-y-4"
             >
               <button
                 onClick={() => setIsSlideFormOpen(null)}
@@ -1590,58 +1746,163 @@ const PageBuilder = () => {
               >
                 <X size={20} />
               </button>
-              <h3 className="font-black text-lg text-slate-800 dark:text-white mb-5">
+              <h3 className="font-black text-lg text-slate-800 dark:text-white">
                 {editingSlideIdx !== null ? 'Edit Slide' : 'Add New Slide'}
               </h3>
+              
               <div className="space-y-4">
+                {/* Active Toggle */}
+                <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <div>
+                    <p className="text-xs font-black uppercase text-slate-700 dark:text-slate-200">Active Status</p>
+                    <p className="text-[10px] text-slate-400">Enable or disable this slide in the customer app</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSlideForm(p => ({ ...p, active: p.active !== false ? false : true }))}
+                    className={`w-11 h-6 rounded-full transition-colors flex items-center p-1 cursor-pointer ${
+                      slideForm.active !== false ? 'bg-orange-500 justify-end' : 'bg-slate-300 dark:bg-slate-700 justify-start'
+                    }`}
+                  >
+                    <motion.div layout className="w-4 h-4 bg-white rounded-full shadow-sm" />
+                  </button>
+                </div>
+
+                {/* Title */}
                 <div>
                   <label className="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">Slide Title</label>
                   <input
                     type="text"
-                    value={slideForm.title}
+                    value={slideForm.title || ''}
                     onChange={e => setSlideForm(p => ({ ...p, title: e.target.value }))}
                     className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-semibold focus:outline-none focus:border-orange-500"
                     placeholder="e.g. Delicious Rice Bowls"
                     required
                   />
                 </div>
+
+                {/* Description */}
                 <div>
                   <label className="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">Sub-text / Description</label>
                   <input
                     type="text"
-                    value={slideForm.desc}
+                    value={slideForm.desc || ''}
                     onChange={e => setSlideForm(p => ({ ...p, desc: e.target.value }))}
                     className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-semibold focus:outline-none focus:border-orange-500"
                     placeholder="e.g. Starting from ₦3,500 only!"
                   />
                 </div>
+
+                {/* Drop Zone / Media Upload */}
                 <div>
-                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">Image URL / Banner</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={slideForm.image}
-                      onChange={e => setSlideForm(p => ({ ...p, image: e.target.value }))}
-                      className="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-semibold focus:outline-none focus:border-orange-500"
-                      placeholder="https://images.unsplash.com/..."
-                      required
-                    />
-                    <label className="px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-2xl cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors flex items-center justify-center shrink-0">
-                      Upload
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={e => handleFileUpload(e, (url) => setSlideForm(p => ({ ...p, image: url })))}
-                        className="hidden"
-                      />
-                    </label>
+                  <label className="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">Slide Media</label>
+                  <div
+                    onDragOver={e => { e.preventDefault(); setDragOverMedia(true); }}
+                    onDragLeave={() => setDragOverMedia(false)}
+                    onDrop={handleMediaDrop}
+                    className={`border-2 border-dashed rounded-2xl p-5 text-center transition-all ${
+                      dragOverMedia 
+                        ? 'border-orange-500 bg-orange-50/30' 
+                        : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900'
+                    }`}
+                  >
+                    {slideForm.image ? (
+                      <div className="space-y-3">
+                        <div className="h-32 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-black flex items-center justify-center">
+                          {slideForm.mediaType === 'video' || (slideForm.image && slideForm.image.toLowerCase().split('?')[0].endsWith('.mp4')) ? (
+                            <video src={slideForm.image} className="w-full h-full object-contain" controls autoplay muted playsInline />
+                          ) : (
+                            <img src={slideForm.image} alt="Preview" className="w-full h-full object-cover" />
+                          )}
+                        </div>
+                        <div className="flex gap-2 justify-center">
+                          <button
+                            type="button"
+                            onClick={() => setSlideForm(p => ({ ...p, mediaType: p.mediaType === 'video' ? 'image' : 'video' }))}
+                            className="px-3 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-[10px] font-black uppercase text-slate-600 dark:text-slate-300"
+                          >
+                            Toggle Type: {slideForm.mediaType || 'image'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSlideForm(p => ({ ...p, image: '', mediaType: 'image' }))}
+                            className="px-3 py-1 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-lg text-[10px] font-black uppercase"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 py-4">
+                        <p className="text-xs font-black text-slate-500 dark:text-slate-400">
+                          Drag & drop slide media file here
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          Supports JPG, PNG, WebP (Max 5MB) or MP4, WebM, MOV (Max 50MB)
+                        </p>
+                        <div className="pt-2">
+                          <label className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-xl cursor-pointer text-xs font-bold transition-colors inline-block">
+                            Browse File
+                            <input
+                              type="file"
+                              accept="image/*,video/*"
+                              onChange={e => handleFileUpload(e, (url, type) => setSlideForm(p => ({ ...p, image: url, mediaType: type })))}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
-                {slideForm.image && (
-                  <div className="h-28 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
-                     <img src={slideForm.image} alt="Preview" className="w-full h-full object-cover" />
+
+                {/* Call To Action Buttons (Text + Link) */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">CTA Button Text</label>
+                    <input
+                      type="text"
+                      value={slideForm.ctaText || ''}
+                      onChange={e => setSlideForm(p => ({ ...p, ctaText: e.target.value }))}
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-semibold focus:outline-none focus:border-orange-500"
+                      placeholder="e.g. Order Now"
+                    />
                   </div>
-                )}
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">CTA Action Link</label>
+                    <input
+                      type="text"
+                      value={slideForm.ctaLink || ''}
+                      onChange={e => setSlideForm(p => ({ ...p, ctaLink: e.target.value }))}
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-semibold focus:outline-none focus:border-orange-500"
+                      placeholder="e.g. /category/rice"
+                    />
+                  </div>
+                </div>
+
+                {/* Scheduling */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">Start Date (Optional)</label>
+                    <input
+                      type="datetime-local"
+                      value={slideForm.startDate || ''}
+                      onChange={e => setSlideForm(p => ({ ...p, startDate: e.target.value }))}
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-semibold focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black uppercase text-slate-400 mb-1 pl-1">End Date (Optional)</label>
+                    <input
+                      type="datetime-local"
+                      value={slideForm.endDate || ''}
+                      onChange={e => setSlideForm(p => ({ ...p, endDate: e.target.value }))}
+                      className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs font-semibold focus:outline-none focus:border-orange-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
                 <div className="flex gap-3 pt-2">
                   <button
                     type="button"

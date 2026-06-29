@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -10,21 +10,59 @@ export default function HeroSlider({ config }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const videoRef = useRef(null);
 
-  const items = type === 'video' ? videoLoops : slides;
+  // Helper to determine if a URL is a video format
+  const isVideoUrl = (url) => {
+    if (!url) return false;
+    const ext = url.toLowerCase().split('?')[0].split('.').pop();
+    return ['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(ext);
+  };
 
-  // Auto-advance for image slides
-  useEffect(() => {
-    if (type !== 'video' && items.length > 1) {
-      const interval = setInterval(() => {
-        setActiveIndex(prev => (prev === items.length - 1 ? 0 : prev + 1));
-      }, 5000);
-      return () => clearInterval(interval);
+  // Filter slides to only show active and scheduled ones
+  const activeSlides = useMemo(() => {
+    if (!slides || !Array.isArray(slides)) return [];
+    const now = new Date();
+    return slides.filter(slide => {
+      if (slide.active === false) return false;
+      if (slide.startDate && new Date(slide.startDate) > now) return false;
+      if (slide.endDate && new Date(slide.endDate) < now) return false;
+      return true;
+    });
+  }, [slides]);
+
+  // Unified items selector: falls back to legacy loops if slides are empty
+  const items = useMemo(() => {
+    if (type === 'video' && (!slides || slides.length === 0)) {
+      return videoLoops.map(loop => ({
+        ...loop,
+        image: loop.url,
+        mediaType: 'video'
+      }));
     }
-  }, [type, items.length]);
+    return activeSlides;
+  }, [type, activeSlides, videoLoops, slides]);
+
+  // Auto-advance for non-video or mixed items containing multiple slides
+  useEffect(() => {
+    if (items.length > 1) {
+      const currentItem = items[activeIndex];
+      const isVideo = currentItem?.mediaType === 'video' || isVideoUrl(currentItem?.image || currentItem?.url);
+      
+      // Auto-advance only for images. Videos will trigger handleNext() onEnded
+      if (!isVideo) {
+        const interval = setInterval(() => {
+          setActiveIndex(prev => (prev === items.length - 1 ? 0 : prev + 1));
+        }, 5000);
+        return () => clearInterval(interval);
+      }
+    }
+  }, [items, activeIndex]);
 
   // Autoplay video loop when active index changes or mount
   useEffect(() => {
-    if (type === 'video') {
+    const currentItem = items[activeIndex];
+    const isVideo = currentItem?.mediaType === 'video' || isVideoUrl(currentItem?.image || currentItem?.url);
+
+    if (isVideo) {
       const video = videoRef.current;
       if (!video) return;
       const tryPlay = () => {
@@ -39,7 +77,7 @@ export default function HeroSlider({ config }) {
         tryPlay();
       }
     }
-  }, [activeIndex, type, items.length]);
+  }, [activeIndex, items]);
 
   if (!items || items.length === 0) return null;
 
@@ -56,22 +94,26 @@ export default function HeroSlider({ config }) {
   return (
     <div className="hero-slider-wrapper">
       <AnimatePresence mode="wait">
-        {type === 'video' ? (
-          items.map((item, idx) => {
-            if (idx !== activeIndex) return null;
-            return (
-              <motion.div
-                key={`video-${idx}`}
-                className="hero-slide-pane"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
-              >
-                <video fetchpriority="high" disablePictureInPicture                   fetchpriority="high"
+        {items.map((item, idx) => {
+          if (idx !== activeIndex) return null;
+          const isVideo = item.mediaType === 'video' || isVideoUrl(item.image || item.url);
+          const mediaSrc = item.image || item.url;
+          
+          return (
+            <motion.div
+              key={`slide-${idx}-${mediaSrc}`}
+              className="hero-slide-pane"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+            >
+              {isVideo ? (
+                <video
+                  fetchpriority="high"
                   disablePictureInPicture
                   ref={idx === activeIndex ? videoRef : null}
-                  src={item.url}
+                  src={mediaSrc}
                   autoPlay
                   muted
                   loop={items.length === 1}
@@ -80,30 +122,37 @@ export default function HeroSlider({ config }) {
                   preload="auto"
                   className="hero-video"
                 />
-              </motion.div>
-            );
-          })
-        ) : (
-          items.map((item, idx) => {
-            if (idx !== activeIndex) return null;
-            return (
-              <motion.div
-                key={`slide-${idx}`}
-                className="hero-slide-pane"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
-              >
-                <img loading="lazy" decoding="async" src={item.image} alt={item.title} className="hero-slide-img" />
+              ) : (
+                <img 
+                  loading="lazy" 
+                  decoding="async" 
+                  src={mediaSrc} 
+                  alt={item.title} 
+                  className="hero-slide-img" 
+                />
+              )}
+              
+              {/* Overlay content */}
+              {(item.title || item.desc || (item.ctaText && item.ctaLink)) && (
                 <div className="hero-slide-overlay">
-                  <h3 className="hero-slide-title">{item.title}</h3>
-                  <p className="hero-slide-desc">{item.desc}</p>
+                  {item.title && <h3 className="hero-slide-title">{item.title}</h3>}
+                  {item.desc && <p className="hero-slide-desc">{item.desc}</p>}
+                  {item.ctaText && item.ctaLink && (
+                    <a 
+                      href={item.ctaLink} 
+                      className="hero-slide-cta"
+                      onClick={(e) => {
+                        // Let React Router handle internal links if needed, otherwise normal navigate
+                      }}
+                    >
+                      {item.ctaText}
+                    </a>
+                  )}
                 </div>
-              </motion.div>
-            );
-          })
-        )}
+              )}
+            </motion.div>
+          );
+        })}
       </AnimatePresence>
 
       {/* Navigation Arrows if more than 1 item */}
@@ -166,6 +215,8 @@ export default function HeroSlider({ config }) {
           padding: 16px 20px;
           box-sizing: border-box;
           color: #fff;
+          align-items: flex-start;
+          text-align: left;
         }
 
         .hero-slide-title {
@@ -182,6 +233,28 @@ export default function HeroSlider({ config }) {
           margin: 0;
           opacity: 0.9;
           text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .hero-slide-cta {
+          display: inline-block;
+          margin-top: 8px;
+          padding: 6px 14px;
+          background: var(--primary, #FF5B26);
+          color: white;
+          font-size: 0.65rem;
+          font-weight: 900;
+          text-transform: uppercase;
+          border-radius: 8px;
+          width: fit-content;
+          text-decoration: none;
+          box-shadow: 0 4px 12px rgba(255, 91, 38, 0.35);
+          transition: all 0.2s ease;
+        }
+
+        .hero-slide-cta:hover {
+          transform: scale(1.03);
+          box-shadow: 0 4px 16px rgba(255, 91, 38, 0.5);
+          color: white;
         }
 
         .slider-nav-btn {
