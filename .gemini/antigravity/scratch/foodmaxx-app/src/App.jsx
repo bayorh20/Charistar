@@ -223,7 +223,7 @@ function AppContent() {
   };
 
   const {
-    needRefresh: [needRefresh, setNeedRefresh],
+    needRefresh: [swNeedRefresh, setSwNeedRefresh],
     updateServiceWorker
   } = useRegisterSW({
     onRegistered(r) {
@@ -1522,7 +1522,7 @@ function AppContent() {
 
           {/* PWA Update Toast Notification Prompt */}
           <AnimatePresence>
-            {needRefresh && (
+            {swNeedRefresh && (
               <motion.div
                 className="pwa-update-toast"
                 initial={{ opacity: 0, y: 50, scale: 0.9 }}
@@ -1541,7 +1541,7 @@ function AppContent() {
                   <button className="pwa-update-btn primary" onClick={() => updateServiceWorker(true)}>
                     Update
                   </button>
-                  <button className="pwa-update-btn secondary" onClick={() => setNeedRefresh(false)}>
+                  <button className="pwa-update-btn secondary" onClick={() => setSwNeedRefresh(false)}>
                     Later
                   </button>
                 </div>
