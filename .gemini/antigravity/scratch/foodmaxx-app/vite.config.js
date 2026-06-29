@@ -1,39 +1,46 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
-export default defineConfig({
-  esbuild: {
-    drop: ['console', 'debugger']
-  },
-  build: {
-    sourcemap: true,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            return 'vendor';
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd());
+  const brandName = env.VITE_BRAND_NAME || 'FoodMaxx';
+  const brandTagline = env.VITE_BRAND_TAGLINE || 'Food Delivery - Ibadan';
+  const brandDesc = env.VITE_BRAND_DESCRIPTION || 'Premium food delivery in Ibadan.';
+  const themeColor = env.VITE_THEME_COLOR || '#FF5B26';
+
+  return {
+    esbuild: {
+      drop: ['console', 'debugger']
+    },
+    build: {
+      sourcemap: true,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              return 'vendor';
+            }
           }
         }
       }
-    }
-  },
-  plugins: [
-    react(),
-    VitePWA({
-      registerType: 'autoUpdate',
-      injectRegister: 'auto',
-      includeAssets: ['icon-192.png', 'icon-512.png', 'favicon.svg', 'icons.svg', 'avatar_male.webp', 'avatar_female.webp', 'offline.html'],
-      manifest: {
-        name: 'FoodMaxx - Ibadan Delivery',
-        short_name: 'FoodMaxx',
-        description: 'Premium food delivery in Ibadan.',
-        theme_color: '#FF5B26',
-        background_color: '#ffffffff',
-        display: 'standalone',
-        orientation: 'portrait',
-        start_url: '/',
-        scope: '/',
+    },
+    plugins: [
+      react(),
+      VitePWA({
+        registerType: 'autoUpdate',
+        injectRegister: 'auto',
+        includeAssets: ['icon-192.png', 'icon-512.png', 'favicon.svg', 'icons.svg', 'avatar_male.webp', 'avatar_female.webp', 'offline.html'],
+        manifest: {
+          name: `${brandName} - ${brandTagline}`,
+          short_name: brandName,
+          description: brandDesc,
+          theme_color: themeColor,
+          background_color: '#ffffffff',
+          display: 'standalone',
+          orientation: 'portrait',
+          start_url: '/',
+          scope: '/',
         icons: [
           {
             src: 'icon-192.png',
@@ -88,4 +95,5 @@ export default defineConfig({
       }
     })
   ]
+  };
 })

@@ -4,13 +4,17 @@ import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
-  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY            || 'AIzaSyDy6BwipyBfJcpSbw0ISce54kKE3UQFabQ',
-  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN        || 'orderfoodmaxx.firebaseapp.com',
-  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID         || 'orderfoodmaxx',
-  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET     || 'orderfoodmaxx.firebasestorage.app',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '146566000959',
-  appId:             import.meta.env.VITE_FIREBASE_APP_ID             || '1:146566000959:web:15f757c02ebbbb9e4b238a'
+  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             import.meta.env.VITE_FIREBASE_APP_ID
 };
+
+if (!firebaseConfig.apiKey && import.meta.env.MODE !== 'test') {
+  console.error('[Admin Firebase Config] Firebase environment variables are missing! Please copy .env.example to .env and fill in details.');
+}
 
 let app     = null;
 let db      = null;

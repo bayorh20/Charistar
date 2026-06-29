@@ -193,8 +193,8 @@ export default function CheckoutModal() {
       // Try v2 modern transaction flow
       const paystack = new window.PaystackPop();
       paystack.newTransaction({
-        key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_test_114553ffb90cdb1598f3e238b6d19b1d6e176a27',
-        email: 'customer@foodmaxx-ibadan.com',
+        key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '',
+        email: userProfile?.email || `customer@${(import.meta.env.VITE_BRAND_NAME || 'app').toLowerCase().replace(/\s+/g, '')}.com`,
         amount: Math.round(total * 100),
         currency: 'NGN',
         reference: 'FM_' + Math.floor(Math.random() * 100000000 + 1),
@@ -227,8 +227,8 @@ export default function CheckoutModal() {
       try {
         // Fallback to v1 setup syntax
         const handler = window.PaystackPop.setup({
-          key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_test_114553ffb90cdb1598f3e238b6d19b1d6e176a27',
-          email: 'customer@foodmaxx-ibadan.com',
+          key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || '',
+          email: userProfile?.email || `customer@${(import.meta.env.VITE_BRAND_NAME || 'app').toLowerCase().replace(/\s+/g, '')}.com`,
           amount: Math.round(total * 100),
           currency: 'NGN',
           reference: 'FM_' + Math.floor(Math.random() * 100000000 + 1),
@@ -855,7 +855,7 @@ export default function CheckoutModal() {
               <div className="paystack-header">
                 <div className="paystack-header-left">
                   <div className="paystack-dot-decor" />
-                  <span className="paystack-merchant">FOODMAXX</span>
+                  <span className="paystack-merchant">{(import.meta.env.VITE_BRAND_NAME || 'FOODMAXX').toUpperCase()}</span>
                 </div>
                 <span className="paystack-amount">₦{total.toLocaleString()}</span>
               </div>
